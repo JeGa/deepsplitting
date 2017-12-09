@@ -1,7 +1,4 @@
 function [x] = prox_softmax(u, c, rho)
-%PROX_SOFTMAX Summary of this function goes here
-%   Detailed explanation goes here
-
     n = size(u, 1);
     
     f = @(x) -log(exp(x(c)) / sum(exp(x), 1)) + (0.5 * rho) * sum((x-u).^2, 1);
@@ -10,7 +7,6 @@ function [x] = prox_softmax(u, c, rho)
     %w = @(x) exp(x-max(x)) ./ sum(exp(x-max(x)), 1);
     
     grad = @(x) w(x) - Id(:, c) + rho * (x-u);
-      
     
     M = @(x) (diag(1 ./ (w(x) + rho)));
     
