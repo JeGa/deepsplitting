@@ -119,6 +119,8 @@ for the gradients of $f$. For $g$ the gradients are
 
 Note that the expressions are in a format where we get a short formula. For calculating the matrix derivatives for all rows or for the complete matrix at once some matrix stacking is required which would result in a longer expression.
 
+For the multi-class classification experiments we use the softmax error function $\ell(x)_i = \exp(x_i)/(\sum_{j=1}^{n} \exp(x_j))$ where $x \in \R^n$. The derivative of the softmax function is $\partial_{x_k} \ell(x)_i = \ell(x)_i (\delta_{ik} - \ell(x)_k)$.
+
 \section{Additional notes}
 
 \begin{itemize}
