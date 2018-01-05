@@ -96,7 +96,7 @@ For a matrix $X$, $X_{ij}$ selects the element in row $i$ and column $j$. If onl
 \subsection{Energy gradients}
 
 For the update steps we need the gradient of the terms $f(W,x,a,\lambda) = \inner{\lambda}{h(Wx)-a}$ and $g(W,x,a) = (1/2) \| h(Wx) - a \|^2$ with respect to $W \in \R^{m \times n}$, $x \in \R^{n \times p}$, $a \in \R^{m \times p}$ and $\lambda \in \R^{m \times p}$. The function $h$ is applied element-wise. Note that for the inner product the matrices are vectorized. \\ \\
-For the gradients we need the following intermediate results. For applying the chain-rule the derivatives of $h(Wx) = h \in \R^{m \times p}$ w.r.t $W$ and $x$ are required. Taking the derivative for each element the entries for the Jacobian are $\partial_{W_i}h_{ij} = h'(W_i x_j) x_j^T$. Similarly, for the derivatives w.r.t. $x$ we get $\partial_{x_j}h_{ij} = h'(W_i x_j) W_i^T $. Note that we can easily get a formulation for all matrix elements at once by the fact that for the Jacobians it holds that $J_{(f \circ g)} = J_f \cdot J_g$. This results in
+For the gradients we need the following intermediate results. For applying the chain-rule the derivatives of $h(Wx) = h \in \R^{m \times p}$ w.r.t $W$ and $x$ are required. Taking the derivative for each element the entries for the Jacobian are $\partial_{W_i}h_{ij} = h'(W_i x_j) x_j^T$. Similarly, for the derivatives w.r.t. $x$ we get $\partial_{x_j}h_{ij} = h'(W_i x_j) W_i^T $. Note that we can easily get a formulation for all matrix elements at once by the fact that for the Jacobians it holds that $J_{(f \circ g)} = J_f \cdot J_g$ and row $i$ of $J_f$ is $\nabla f_i$. This results in
 
 \begin{equation}
 	\begin{aligned}
@@ -112,10 +112,8 @@ for the gradients of $f$. For $g$ the gradients are
 \begin{equation}
 	\begin{aligned}
 		\partial_{W_i} g(W,x,a) &= \sum_{j=1}^{p} (h(W_i x_j) - a_{ij}) h'(W_i x_j) x_j^T \\
-		\partial_{x_j} g(W,x,a) &=  \\
-		
-		\partial_{a} g(W,x,a) &= -h(Wx) + a \\
-		\partial_{x} g(W,x,a) &= (h(Wx)-a) W^Th'(Wx).
+		\partial_{x_j} g(W,x,a) &= \sum_{i=1}^{m} (h(W_i x_j) - a_{ij}) h'(W_i x_j) W_i \\		
+		\partial_{a} g(W,x,a) &= a - h(Wx). \\
 	\end{aligned}
 \end{equation}
 
