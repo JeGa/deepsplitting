@@ -12,11 +12,8 @@ layers = [dim, 10, 10, 5, classes];
 [h, dh] = activation_function('sigmoid');
 loss = LeastSquares;
 
-% Initialize variables.
 network = Network(layers, h, loss, X_train);
-
-nezwork = network.train(X_train, y_train);
-
+network = network.train(X_train, y_train, 1);
 [~, y] = network.fp(X_train);
 
 plot_result(X_train, y);
@@ -63,6 +60,9 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
     y_train = y(1:n, :);
     X_test = X(:, n+1:end);
     y_test = y(n+1:end, :);
+    
+    y_train = one_hot(y_train);
+    y_test = one_hot(y_test);
 end
 
 function [h, dh] = activation_function(type)
@@ -81,4 +81,13 @@ function plot_result(X_train, y)
     axis equal;
     title('Ground truth');
     drawnow
+end
+
+function [x_onehot] = one_hot(x)
+    % x: (N,1).
+    classes = max(x);
+
+    x_onehot = zeros(classes, size(x,1));
+    ind = sub2ind(size(x_onehot), x', 1:size(x',2));
+    x_onehot(ind) = 1;
 end

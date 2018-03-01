@@ -57,19 +57,25 @@ classdef Network
             y = obj.z{size(obj.W, 2)};
         end
         
-        function [obj] = train(obj, X_train, y_train)
-            % for i=1:10
-            %     L = loss(W, b, X, h, y_train);
-            %     disp(['Loss: ', num2str(L)]);
-            %     
-            %     [dW, db] = gradient_network(W, b, X_train, y_train, h, dh);
-            %     
-            %     tau = 10;
-            %     for j=1:size(layers)
-            %         W{j} = W{j} - tau * dW{j};
-            %         b{j} = b{j} - tau * db{j};
-            %     end
-            % end
+        function [obj] = train(obj, X_train, y_train, stepsize)
+
+            for i=1:10
+                [dW, db] = obj.gradient(X_train, y_train);
+                
+                for j=1:size(layers)
+                    obj.W{j} = obj.W{j} - stepsize * dW{j};
+                    obj.b{j} = obj.b{j} - stepsize * db{j};
+                end
+                
+                [~,y] = obj.fp(X_train);
+                L = obj.loss.loss(y,y_train);
+                
+                disp(['Loss: ', num2str(L)]);
+            end
+        end
+        
+        function [obj] = gradient(obj, X_train, y_train)
+            
         end
         
     end
