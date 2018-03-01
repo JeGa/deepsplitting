@@ -1,4 +1,4 @@
-classdef nn
+classdef Network
     properties
         W % Weights
         b % Biases
@@ -6,10 +6,11 @@ classdef nn
         a % Variables for activations.
         lambda % Lagrange multipliers.
         h % Activation function.
+        loss % Object for calculating loss and its gradient.
     end
     
     methods
-        function obj = nn(layers, h, X_train)
+        function obj = Network(layers, h, loss, X_train)
             % Number of layers (including last linear layer).
             L = size(layers, 2)-1;
 
@@ -20,6 +21,7 @@ classdef nn
             obj.lambda = cell(1, L);
             
             obj.h = h;
+            obj.loss = loss;
 
             % Initialize network weights.
             for l=1:L
@@ -53,6 +55,21 @@ classdef nn
             % Returns the network output from the last layer.
             obj = obj.forwardpass(X_train);
             y = obj.z{size(obj.W, 2)};
+        end
+        
+        function [obj] = train(obj, X_train, y_train)
+            % for i=1:10
+            %     L = loss(W, b, X, h, y_train);
+            %     disp(['Loss: ', num2str(L)]);
+            %     
+            %     [dW, db] = gradient_network(W, b, X_train, y_train, h, dh);
+            %     
+            %     tau = 10;
+            %     for j=1:size(layers)
+            %         W{j} = W{j} - tau * dW{j};
+            %         b{j} = b{j} - tau * db{j};
+            %     end
+            % end
         end
         
     end

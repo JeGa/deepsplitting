@@ -1,7 +1,7 @@
 clearvars;
 close all;
 
-addpath('nn');
+addpath(genpath('nn'));
 
 [X_train, y_train, X_test, y_test, dim, classes] = get_data('spirals', false);
 
@@ -9,30 +9,17 @@ addpath('nn');
 
 % Define network architecture.
 layers = [dim, 10, 10, 5, classes];
-
 [h, dh] = activation_function('sigmoid');
+loss = LeastSquares;
 
 % Initialize variables.
-network = nn(layers, h, X_train);
+network = Network(layers, h, loss, X_train);
 
-% for i=1:10
-%     L = loss(W, b, X, h, y_train);
-%     disp(['Loss: ', num2str(L)]);
-%     
-%     [dW, db] = gradient_network(W, b, X_train, y_train, h, dh);
-%     
-%     tau = 10;
-%     for j=1:size(layers)
-%         W{j} = W{j} - tau * dW{j};
-%         b{j} = b{j} - tau * db{j};
-%     end
-% end
+nezwork = network.train(X_train, y_train);
 
 [~, y] = network.fp(X_train);
-scatter(X_train(1,:), X_train(2,:), 10, max(y, [], 1));
-axis equal;
-title('Ground truth');
-drawnow
+
+plot_result(X_train, y);
 
 %% Helper functions.
 
@@ -86,4 +73,12 @@ function [h, dh] = activation_function(type)
         h = @(t) max(0, t);
         dh = @(t) 1 * (t>0);
     end
+end
+
+function plot_result(X_train, y)
+    % y is of shape (cls, samples).
+    scatter(X_train(1,:), X_train(2,:), 10, max(y, [], 1));
+    axis equal;
+    title('Ground truth');
+    drawnow
 end
