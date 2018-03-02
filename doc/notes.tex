@@ -19,7 +19,8 @@
 The aim is to solve a supervised regression or classification problem involving a highly nested objective function. A mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$ should be learned. The loss function can be formulated as
 
 \begin{equation}
-E(W) = \frac{1}{2} \sum_{i=1}^{N} L(y_i, f(W;x_i))
+E(W) = \frac{1}{N} \sum_{i=1}^{N} L(y_i, f(W;x_i))
+\label{eq:1}
 \end{equation}
 
 with some appropriate error measure $L(y,x)$. This error measure can for example be the squared l2-loss $L(y,x) = \frac{1}{2} \| y - x \|^2_2$. The function $f(W;x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
@@ -120,6 +121,62 @@ for the gradients of $f$. For $g$ the gradients are
 Note that the expressions are in a format where we get a short formula. For calculating the matrix derivatives for all rows or for the complete matrix at once some matrix stacking is required which would result in a longer expression.
 
 For the multi-class classification experiments we use the softmax error function $\ell(x)_i = \exp(x_i)/(\sum_{j=1}^{n} \exp(x_j))$ where $x \in \R^n$. The derivative of the softmax function is $\partial_{x_k} \ell(x)_i = \ell(x)_i (\delta_{ik} - \ell(x)_k)$.
+
+\subsection{Backpropagation}
+
+As baseline we train the loss function using gradient descent. To calculate the gradients $\nabla_{W}E(W)$ of the loss function $E(W)$ backpropagation is used. Starting from the definition of the loss function in equation \ref{eq:1} we can calculate the gradient for each sample separately by computing $\nabla_{W}L(y_i,f(W;x_i))$ and summing over all samples. In the following we consider $W_{jk}^l$ as the weight connecting neuron $k$ to neuron $j$ of layer $l$. The linearities in layer $l$ are written as $z^l = W^la^{l-1} + b^l$ operating on the activations $a^{l-1}$. The activations of layer $l$ are computed as $a^l = h(W^l a^{l-1} + b^l) = h(z^l)$ with activation function $h$. Additionally, we have used the explicit formulation with the bias being a separate variable. This could also be included in the weight matrix by augmenting the activation vector with one and augmenting the weight matrix with the bias vector as last column.  We introduce the convention of $E^l_a$ being the error function of layer $l$ given the activations and $E^l_z$ being the error function of layer $l$ given the linearities. This allows us to split the error function and use the chain rule for computing the derivatives. Using this formulation, the goal is to calculate $\nabla_{W}E(W,b)$ and $\nabla_{b}E(W,b)$. By fixing all remaining weights and biases and applying the chain rule we get
+
+\begin{equation}
+	\begin{aligned}
+		\frac{\partial E(W_{jk}^l)}{\partial W_{jk}^l} &= 
+		\frac{\partial E^l_a(a^l(z^l(W_{jk}^l)))}{\partial W_{jk}^l} =
+		\frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} \frac{\partial z^l_j}{\partial W^l_{jk}}, \\
+		\frac{\partial E(b_j^l)}{\partial b_j^l} &=
+		\frac{\partial E^l_a(a^l(z^l(b_j^l)))}{\partial b_j^l} =
+		\frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} \frac{\partial z^l_j}{\partial b_j^l}.
+	\end{aligned}
+	\label{eq:backprop_chainrule}
+\end{equation}
+
+Note that $\frac{\partial z^l_i}{\partial W^l_{jk}} = 0$ and $\frac{\partial z^l_i}{\partial b_j^l} = 0$ for all $i \neq j$. We now introduce for each layer the error variable 
+
+\begin{equation}
+	\begin{aligned}
+		\delta^l_j &= \frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} =
+		\frac{\partial E^l_a}{\partial a^l_j} h'(z^l_j), \\
+		\delta^l &= \frac{\partial E^l_a}{\partial a^l} \frac{\partial a^l}{\partial z^l} =
+		\frac{\partial E^l_a}{\partial a^l} h'(z^l) = \frac{\partial E^l_a}{\partial a^l} \odot H'(z^l)
+	\end{aligned}
+\end{equation}
+
+with $h'(z^l)$ being the Jacobian, $H'(z^l)$ the element-wise applied derivative of the activation function and $\odot$ the element-wise product. By expanding the first term we see that
+
+\begin{equation}
+	\begin{aligned}
+		\frac{\partial E^l_a(a^l_j)}{\partial a^l_j} &= 
+		\frac{\partial E^{l+1}_z(z^{l+1}(a^l_j))}{\partial a^l_j} = 
+		\frac{\partial E^{l+1}_z}{\partial z^{l+1}} \frac{\partial z^{l+1}}{\partial a^l_j} = 
+		\delta^{l+1}W^{l+1}_{:,j}, \\
+		\frac{\partial E^l_a(a^l)}{\partial a^l} &= \delta^{l+1}W^{l+1}.
+	\end{aligned}
+\end{equation}
+
+This shows that we can recursively compute the error variable $\delta^l$ starting from the last layer $L$ by
+
+\begin{equation}
+	\begin{aligned}
+		\delta^l = \delta^{l+1}W^{l+1} \odot H'(z^l).
+	\end{aligned}
+\end{equation}
+
+What remains is to compute the last terms of the equations \ref{eq:backprop_chainrule}. Since $\frac{\partial z^l_j}{\partial b_j^l} = 1$
+
+\begin{figure}[t]
+	\centering
+	\includegraphics[width=0.6\textwidth]{images/backprop}
+	\caption{Model of the neural network loss function with weights $W$, biases $b$, linearities $z$ and activations $a$ displayed at some layer $l$.}
+	\label{fig:backprop}
+\end{figure}
 
 \section{Additional notes}
 
