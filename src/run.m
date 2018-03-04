@@ -8,23 +8,30 @@ addpath(genpath('nn'));
 %%
 
 % Define network architecture.
-layers = [dim, 40, 40, 40, 40, classes];
+layers = [dim, 20, 20, 10, 5, classes];
 [h, dh] = activation_function(2);
 loss = LeastSquares;
 
 network = Network(layers, h, dh, loss, X_train);
-
-network = network.train(X_train, y_train, get_params());
+network = network.train(X_train, y_train, get_params(1));
 
 [~, y] = network.fp(X_train);
-
 plot_result(X_train, y, 3);
 
 %% Helper functions.
 
-function [params] = get_params()
-    params.stepsize = 0.1;
-    params.iterations = 1500;
+function [params] = get_params(ls)
+    params.linesearch = ls; % 0 = fixed stepsize, 1 = Armijo, 2 = Wolfe-Powell.
+    if ls == 0
+        params.stepsize = 0.1;
+    elseif ls == 1
+        params.beta = 0.5;
+        params.gamma = 10^-4;
+    elseif ls == 2
+        
+    end
+    
+    params.iterations = 2500;
     params.plot = 0;
 end
 
