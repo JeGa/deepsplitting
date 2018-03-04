@@ -8,17 +8,25 @@ addpath(genpath('nn'));
 %%
 
 % Define network architecture.
-layers = [dim, 10, 10, 5, classes];
-[h, dh] = activation_function('sigmoid');
+layers = [dim, 40, 40, 40, 40, classes];
+[h, dh] = activation_function(2);
 loss = LeastSquares;
 
-network = Network(layers, h, loss, X_train);
-network = network.train(X_train, y_train, 1);
+network = Network(layers, h, dh, loss, X_train);
+
+network = network.train(X_train, y_train, get_params());
+
 [~, y] = network.fp(X_train);
 
-plot_result(X_train, y);
+plot_result(X_train, y, 3);
 
 %% Helper functions.
+
+function [params] = get_params()
+    params.stepsize = 0.1;
+    params.iterations = 1500;
+    params.plot = 0;
+end
 
 function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
     addpath('datasets');
@@ -35,10 +43,11 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
         case 'clusters'
             data = clusterincluster();
         case 'spirals'
-            data = twospirals(5000, 560, 90, 1.2);
+            data = twospirals(300, 560, 90, 1.2);
     end
 
     if plot
+        figure(1);
         scatter(data(:,1), data(:,2), 10, data(:,3));
         axis equal;
         title('Ground truth');
@@ -66,20 +75,23 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
 end
 
 function [h, dh] = activation_function(type)
-    if type == 'sigmoid'
+    if type == 1
         h = @(t) 1 ./ (1 + exp(-t));
         dh = @(t) h(t) .* (1 - h(t));
-    elseif type == 'relu'
+    elseif type == 2
         h = @(t) max(0, t);
         dh = @(t) 1 * (t>0);
     end
 end
 
-function plot_result(X_train, y)
+function plot_result(X_train, y, f)
+    [~,C] = max(y, [], 1);
+    C = C - 1;
+
     % y is of shape (cls, samples).
-    scatter(X_train(1,:), X_train(2,:), 10, max(y, [], 1));
+    figure(f);
+    scatter(X_train(1,:), X_train(2,:), 10, C);
     axis equal;
-    title('Ground truth');
     drawnow
 end
 
