@@ -19,11 +19,11 @@
 The aim is to solve a supervised regression or classification problem involving a highly nested objective function. A mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$ should be learned. The loss function can be formulated as
 
 \begin{equation}
-E(W) = \frac{1}{N} \sum_{i=1}^{N} L(y_i, f(W;x_i))
+E(W) = \frac{1}{N} \sum_{i=1}^{N} L(f(W;x_i);y_i)
 \label{eq:1}
 \end{equation}
 
-with some appropriate error measure $L(y,x)$. This error measure can for example be the squared l2-loss $L(y,x) = \frac{1}{2} \| y - x \|^2_2$. The function $f(W;x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
+with some appropriate error measure $L(y_t;y)$. This error measure can for example be the squared l2-loss $L(y_t;y) = \frac{1}{2} \| y_t - y \|^2_2$. The function $f(W;x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
 
 \section{Solution concept}
 
@@ -32,7 +32,7 @@ In the following, we stack all input samples into the matrix $x$ where each colu
 \begin{equation}
 	\begin{aligned}
 		& \underset{\{W_i\}}{\text{minimize}}
-		& & L(y,W_3h(W_2h(W_1x)).
+		& & L(W_3h(W_2h(W_1x);y).
 	\end{aligned}
 \end{equation}
 
@@ -42,7 +42,7 @@ by introducing additional variables and adding the appropriate constraints. This
 \begin{equation}
 	\begin{aligned}
 		& \underset{\{W_i,a_i,z\}}{\text{minimize}}
-		&& L(y,z). \\
+		&& L(z;y). \\
 		& \text{subject to}
 		&&  a_1 = h(W_1x), \\
 		&&& a_2 = h(W_2a_1), \\
@@ -124,32 +124,34 @@ For the multi-class classification experiments we use the softmax error function
 
 \subsection{Backpropagation}
 
-As baseline we train the loss function using gradient descent. To calculate the gradients $\nabla_{W}E(W)$ of the loss function $E(W)$ backpropagation is used. Starting from the definition of the loss function in equation \ref{eq:1} we can calculate the gradient for each sample separately by computing $\nabla_{W}L(y_i,f(W;x_i))$ and summing over all samples. In the following we consider $W_{jk}^l$ as the weight connecting neuron $k$ to neuron $j$ of layer $l$. The linearities in layer $l$ are written as $z^l = W^la^{l-1} + b^l$ operating on the activations $a^{l-1}$. The activations of layer $l$ are computed as $a^l = h(W^l a^{l-1} + b^l) = h(z^l)$ with activation function $h$. Additionally, we have used the explicit formulation with the bias being a separate variable. This could also be included in the weight matrix by augmenting the activation vector with one and augmenting the weight matrix with the bias vector as last column.  We introduce the convention of $E^l_a$ being the error function of layer $l$ given the activations and $E^l_z$ being the error function of layer $l$ given the linearities. This allows us to split the error function and use the chain rule for computing the derivatives. Using this formulation, the goal is to calculate $\nabla_{W}E(W,b)$ and $\nabla_{b}E(W,b)$. By fixing all remaining weights and biases and applying the chain rule we get
+As baseline we train the loss function using gradient descent. To calculate the gradients $\nabla_{W}E(W)$ of the loss function $E(W)$ backpropagation is used. Starting from the definition of the loss function in equation \ref{eq:1} we can calculate the gradient for each sample separately by computing $\nabla_{W}L(f(W;x_i);y_i)$ and summing over all samples. In the following we consider $W_{jk}^l$ as the weight connecting neuron $k$ to neuron $j$ of layer $l$. The linearities in layer $l$ are written as $z^l = W^la^{l-1} + b^l$ operating on the activations $a^{l-1}$. The activations of layer $l$ are computed as $a^l = h(W^l a^{l-1} + b^l) = h(z^l)$ with activation function $h$. Additionally, we have used the explicit formulation with the bias being a separate variable. This could also be included in the weight matrix by augmenting the activation vector with one and augmenting the weight matrix with the bias vector as last column. Figure \ref{fig:backprop} shows the neural network model at a layer $l$. We introduce the convention of $E^l_a$ being the error function of layer $l$ given the activations and $E^l_z$ being the error function of layer $l$ given the linearities. This allows us to split the error function and use the chain rule for computing the derivatives. Using this formulation, the goal is to calculate $\nabla_{W}E(W,b)$ and $\nabla_{b}E(W,b)$. By fixing all remaining weights and biases and applying the chain rule we get
 
 \begin{equation}
 	\begin{aligned}
 		\frac{\partial E(W_{jk}^l)}{\partial W_{jk}^l} &= 
 		\frac{\partial E^l_a(a^l(z^l(W_{jk}^l)))}{\partial W_{jk}^l} =
+		\frac{\partial E^l_a}{\partial a^l} \frac{\partial a^l}{\partial z^l} \frac{\partial z^l}{\partial W^l_{jk}} =
 		\frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} \frac{\partial z^l_j}{\partial W^l_{jk}}, \\
 		\frac{\partial E(b_j^l)}{\partial b_j^l} &=
 		\frac{\partial E^l_a(a^l(z^l(b_j^l)))}{\partial b_j^l} =
+		\frac{\partial E^l_a}{\partial a^l} \frac{\partial a^l}{\partial z^l} \frac{\partial z^l}{\partial b_j^l} =
 		\frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} \frac{\partial z^l_j}{\partial b_j^l}.
 	\end{aligned}
 	\label{eq:backprop_chainrule}
 \end{equation}
 
-Note that $\frac{\partial z^l_i}{\partial W^l_{jk}} = 0$ and $\frac{\partial z^l_i}{\partial b_j^l} = 0$ for all $i \neq j$. We now introduce for each layer the error variable 
+Note that $\frac{\partial z^l_i}{\partial W^l_{jk}} = 0$ and $\frac{\partial z^l_i}{\partial b_j^l} = 0$ for all $i \neq j$. We now introduce for each layer the error variable (row vector)
 
 \begin{equation}
 	\begin{aligned}
 		\delta^l_j &= \frac{\partial E^l_a}{\partial a^l_j} \frac{\partial a^l_j}{\partial z^l_j} =
 		\frac{\partial E^l_a}{\partial a^l_j} h'(z^l_j), \\
 		\delta^l &= \frac{\partial E^l_a}{\partial a^l} \frac{\partial a^l}{\partial z^l} =
-		\frac{\partial E^l_a}{\partial a^l} h'(z^l) = \frac{\partial E^l_a}{\partial a^l} \odot H'(z^l)
+		\frac{\partial E^l_a}{\partial a^l} h'(z^l) = \frac{\partial E^l_a}{\partial a^l} \odot H'(z^l)^T
 	\end{aligned}
 \end{equation}
 
-with $h'(z^l)$ being the Jacobian, $H'(z^l)$ the element-wise applied derivative of the activation function and $\odot$ the element-wise product. By expanding the first term we see that
+with $h'(z^l)$ being the Jacobian, $H'(z^l)$ the element-wise applied derivative of the activation function and $\odot$ the element-wise product. Note that the Jacobian is a diagonal matrix and we therefore can rewrite the equation using the Hadamard product. By expanding the first term we see that
 
 \begin{equation}
 	\begin{aligned}
@@ -165,11 +167,9 @@ This shows that we can recursively compute the error variable $\delta^l$ startin
 
 \begin{equation}
 	\begin{aligned}
-		\delta^l = \delta^{l+1}W^{l+1} \odot H'(z^l).
+		\delta^l = \delta^{l+1}W^{l+1} h'(z^l) = \delta^{l+1}W^{l+1} \odot H'(z^l)^T.
 	\end{aligned}
 \end{equation}
-
-What remains is to compute the last terms of the equations \ref{eq:backprop_chainrule}. Since $\frac{\partial z^l_j}{\partial b_j^l} = 1$
 
 \begin{figure}[t]
 	\centering
@@ -178,10 +178,41 @@ What remains is to compute the last terms of the equations \ref{eq:backprop_chai
 	\label{fig:backprop}
 \end{figure}
 
-\section{Additional notes}
+What remains is to compute the last terms of the equations \ref{eq:backprop_chainrule}. Since $\frac{\partial z^l_j}{\partial W^l_{jk}} = a^{l-1}_k$ and $\frac{\partial z^l_j}{\partial b_j^l} = 1$ we get
+
+\begin{equation}
+	\begin{aligned}
+		\frac{\partial E(W_{jk}^l)}{\partial W_{jk}^l} &= \delta^l_j a^{l-1}_k, \\
+		\frac{\partial E(b_j^l)}{\partial b_j^l} &= \delta^l_j.
+	\end{aligned}
+\end{equation}
+
+Special care needs to be taken at the last layer of the network. Since it is usual to have only a linear layer at the end of a network without activation function the error variable (omitting the constants in the loss function) becomes 
+
+\begin{equation}
+	\begin{aligned}
+		\delta^L = \frac{\partial L(z^L)}{\partial z^L} = \nabla L^T.
+	\end{aligned}
+\end{equation}
+
+To efficiently implement backpropagation we can directly derive a matrix formulation so the iteration over all sample points is not required. By reformulating the loss function as $L(f(W;X),Y)$ with $X \in \R^{d \times N}, Y \in \R^{c \times N}, L: (\R^{c \times N},\R^{c \times N}) \to \R$, sample dimension $d$ and output dimension $c$ the activations and linearities are now matrices. To calculate the derivatives the involved matrices are vectorized in column-major order. Working through the stated derivation again but with the vectorized matrices we can rewrite the expressions in matrix form as
+
+\begin{equation}
+	\begin{aligned}
+		\delta^l_m &= \delta^{l+1}_m W^{l+1} h'(z^l) = \delta^{l+1}_m W^{l+1} \odot H'(z^l)^T, \\
+		\delta^L_m &= \text{reshape}(\frac{\partial L(z^L)}{\partial z^L}) = L_m, \\
+		D_W^l &= \text{reshape}(\delta^l J^l), \\
+		D_b^l &= \sum_{i=1}^{N} (\delta^l_m)_{i}^T.
+	\end{aligned}
+\end{equation}
+
+The gradients are represented by $\nabla_{W^l}E = D^l_W$ and $\nabla_{b^l}E = D^l_b$. Each row in the matrix $L_m$ is the transpose gradient w.r.t. each sample point $\nabla L(z^L_i)$. Each row of the matrix $H'$ is the derivative of the activation function applied element wise to the each sample point. For $D^l_b$ the summation is over the rows $i$ of the matrix $\delta^l_m$. Note that $D^l_W$ can be implemented faster using per element multiplication but is written in full matrix form for easier reading. The matrix $J^l$ is the Jacobian $\frac{\partial z^l}{\partial W^l}$ with $W^l$ in row-major or column-major vectorization. In this formulation the vector version of the error variable $\delta^l$ is used. The reshape function extracts the rows and columns accordingly to get the matrix form.
+
+\section{Additional notes and todos}
 
 \begin{itemize}
 	\item Could add regularizer for the weights.
+	\item Put in $L$ the groundtruth as constants.
 \end{itemize}
 
 {\small
