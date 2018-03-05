@@ -13,7 +13,7 @@ layers = [dim, 20, 20, 10, 5, classes];
 loss = LeastSquares;
 
 network = Network(layers, h, dh, loss, X_train);
-network = network.train(X_train, y_train, get_params(1));
+network = network.train(X_train, y_train, get_params(3));
 
 [~, y] = network.fp(X_train);
 plot_result(X_train, y, 3);
@@ -21,17 +21,21 @@ plot_result(X_train, y, 3);
 %% Helper functions.
 
 function [params] = get_params(ls)
-    params.linesearch = ls; % 0 = fixed stepsize, 1 = Armijo, 2 = Wolfe-Powell.
-    if ls == 0
+    params.linesearch = ls; % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
+    if ls == 1
         params.stepsize = 0.1;
-    elseif ls == 1
+    elseif ls == 2
         params.beta = 0.5;
         params.gamma = 10^-4;
-    elseif ls == 2
-        
+    elseif ls == 3
+        params.gamma = 10^-4;
+        params.eta = 0.7;
+        params.beta = 4;
+    else
+        error('Unsupported linesearch parameter.');
     end
     
-    params.iterations = 2500;
+    params.iterations = 2000;
     params.plot = 0;
 end
 
@@ -50,7 +54,7 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
         case 'clusters'
             data = clusterincluster();
         case 'spirals'
-            data = twospirals(300, 560, 90, 1.2);
+            data = twospirals(1000, 560, 90, 1.2);
     end
 
     if plot

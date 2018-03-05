@@ -14,7 +14,7 @@ classdef Network
         function obj = Network(layers, h, dh, loss, X_train)
             % Number of layers (including last linear layer).
             L = size(layers, 2)-1;
-
+            
             obj.W = cell(1, L);
             obj.b = cell(1, L);
             obj.z = cell(1, L);
@@ -24,14 +24,14 @@ classdef Network
             obj.h = h;
             obj.dh = dh;
             obj.loss = loss;
-
+            
             % Initialize network weights.
             for l=1:L
                 obj.W{l} = 0.1*randn(layers(l+1), layers(l));
                 obj.b{l} = 0.1*randn(layers(l+1), 1);
                 
                 % Initialize Lagrange multipliers for equality constraints.
-                obj.lambda{l} = ones(layers(l+1), size(X_train, 2)); 
+                obj.lambda{l} = ones(layers(l+1), size(X_train, 2));
             end
             
             % Perform a forward pass to find a feasible initialization of all variables.
@@ -46,30 +46,30 @@ classdef Network
         
         function obj = train(obj, X_train, y_train, params)
             % params: Struct with
-            %   stepsize, iterations, plot.
+            %   linesearch parameters, iterations, plot.
             
             for i=1:params.iterations
-                [obj, L, y] = obj.f(X_train, y_train);
-                
-                if params.plot
-                    obj.plot_result(X_train, y, 2);
-                end
-                    
-                [obj, dW, db] = obj.gradient(X_train, y_train, y);
+                [obj, dW, db, L, y] = obj.gradient(X_train, y_train);
                 
                 % Step directions.
                 sW = cellfun(@(x) -x, dW, 'UniformOutput', 0);
                 sb = cellfun(@(x) -x, db, 'UniformOutput', 0);
                 
-                if params.linesearch == 0
+                if params.linesearch == 1
                     stepsize = params.stepsize;
-                elseif params.linesearch == 1
-                    stepsize = obj.armijo(obj.W, obj.b, sW, sb, X_train, y_train, params.beta, params.gamma);
                 elseif params.linesearch == 2
-                    stepsize = obj.pw();
+                    stepsize = obj.armijo(obj.W, obj.b, dW, db, ...
+                        sW, sb, X_train, y_train, params.beta, params.gamma);
+                elseif params.linesearch == 3
+                    stepsize = obj.pw(obj.W, obj.b, dW, db, ...
+                        sW, sb, X_train, y_train, params.gamma, params.eta, params.beta);
                 end
                 
                 disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ' (', num2str(i), ')']);
+                
+                if params.plot
+                    obj.plot_result(X_train, y, 2);
+                end
                 
                 [obj.W, obj.b] = obj.update_weights(stepsize, obj.W, obj.b, sW, sb);
             end
@@ -79,13 +79,24 @@ classdef Network
         end
         
         function [obj, L, y] = f(obj, X_train, y_train)
-            [obj,y] = obj.fp(X_train);
+            [obj, y] = obj.fp(X_train);
             L = obj.loss.loss(y, y_train);
         end
         
-        % TODO
-        function [] = check_gradients(obj)
-        end
+%         function check_gradients(obj)
+%             
+%             f = 
+%             
+%             options = optimoptions(@fminunc, 'CheckGradients', true, 'SpecifyObjectiveGradient', true);
+%             
+%             [x fval exitflag output] = fminunc(@f, x0, options);
+%         end
+
+%         function [L, g] = fun(obj, x)
+%             [Wc, ~] = to_mat(x);
+%             
+%             [obj, dW, db, L, y] = obj.gradient_eval(Wc, X_train, y_train); 
+%         end
         
     end
     
@@ -101,13 +112,13 @@ classdef Network
         function obj = forwardpass(obj, W, b, X_train)
             L = size(W, 2);
             n = size(X_train, 2);
-
+            
             obj.z{1} = W{1}*X_train + b{1} * ones(1, n);
-
+            
             for l=1:L-1
                 % Apply activation function.
                 obj.a{l} = obj.h(obj.z{l});
-
+                
                 % Apply linear mapping.
                 obj.z{l+1} = W{l+1}*obj.a{l} + b{l+1} * ones(1, size(obj.a{l}, 2));
             end
@@ -120,8 +131,10 @@ classdef Network
             end
         end
         
-        function [obj, dW, db] = gradient(obj, X_train, y_train, y)
-            layers = size(obj.W, 2);
+        function [obj, dW, db, L, y] = gradient_eval(obj, W, b, X_train, y_train)
+            [obj, L, y] = obj.f_eval(W, b, X_train, y_train);
+            
+            layers = size(W, 2);
             
             g_loss = obj.loss.gradient(y, y_train);
             dL = g_loss'; % (samples,dim).
@@ -137,15 +150,19 @@ classdef Network
             
             % Other layers.
             for i = layers-1:-1:2
-                error{i} = error{i+1} * obj.W{i+1} .* obj.dh(obj.z{i})';
+                error{i} = error{i+1} * W{i+1} .* obj.dh(obj.z{i})';
                 db{i} = sum(error{i}, 1)';
                 dW{i} = obj.Dw(error{i}, obj.a{i-1});
             end
             
             % First layer.
-            error{1} = error{1+1} * obj.W{1+1} .* obj.dh(obj.z{1})';
+            error{1} = error{1+1} * W{1+1} .* obj.dh(obj.z{1})';
             db{1} = sum(error{1}, 1)';
             dW{1} = obj.Dw(error{1}, X_train);
+        end
+        
+        function [obj, dW, db, L, y] = gradient(obj, X_train, y_train)
+            [obj, dW, db, L, y] = obj.gradient_eval(obj.W, obj.b, X_train, y_train);
         end
         
         function dW = Dw(~, error, a)
@@ -160,47 +177,106 @@ classdef Network
             dW = reshape(sum(error_shaped .* a_shaped,1), in_dim, out_dim)';
         end
         
-        function sigma = armijo(obj, W, b, sW, sb, X_train, y_train, beta, gamma)
+        function sigma = armijo(obj, W, b, dW, db, sW, sb, X_train, y_train, beta, gamma)
             k = 1;
             
             while 1
                 sigma = (beta^k) / beta;
                 
-                % x_new = x + sigma * s
-                [W_new, b_new] = obj.update_weights(sigma, W, b, sW, sb);
-                
-                % f(x_new) - f(x)
-                [~, L_new, ~] = obj.f_eval(W_new, b_new, X_train, y_train);
-                [~, L, ~] = obj.f_eval(W, b, X_train, y_train);
-                f_new =  L_new - L;
-                
-                flatten = @(x) x(:);
-                W_sum = sum(cellfun(@(W, sW) sum(flatten(W .* sW)), W, sW));
-                b_sum = sum(cellfun(@(b, sb) sum(flatten(b .* sb)), b, sb));
-                
-                if f_new <= sigma * gamma * (W_sum + b_sum)
-                   break;
+                if obj.check_armijo(sigma, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+                    break;
                 end
-
+                
                 k = k + 1;
             end
         end
         
-        % TODO
-        function [sigma] = pw(obj)
+        function r = check_armijo(obj, sigma, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+            % Returns true if armijo condition is satisfied.
+            
+            % x_new = x + sigma * s
+            [W_new, b_new] = obj.update_weights(sigma, W, b, sW, sb);
+            
+            % f(x_new) - f(x)
+            [~, L_new, ~] = obj.f_eval(W_new, b_new, X_train, y_train);
+            [~, L_current, ~] = obj.f_eval(W, b, X_train, y_train);
+            f_new =  L_new - L_current;
+            
+            slope = obj.directional_derivative(dW, db, sW, sb);
+            
+            if f_new <= sigma * gamma * slope
+                r = true;
+            else
+                r = false;
+            end
         end
         
-        % TODO: Remove.
-        function plot_result(~, X_train, y, f)
-            [~,C] = max(y, [], 1);
-            C = C - 1;
-
-            % y is of shape (cls, samples).
-            figure(f);
-            scatter(X_train(1,:), X_train(2,:), 10, C);
-            axis equal;
-            drawnow
+        function d = directional_derivative(~, dW, db, sW, sb)
+            flatten = @(x) x(:);
+            W_sum = sum(cellfun(@(dW, sW) sum(flatten(dW .* sW)), dW, sW));
+            b_sum = sum(cellfun(@(db, sb) sum(flatten(db .* sb)), db, sb));
+            d = W_sum + b_sum;
         end
+        
+        function sigma = pw(obj, W, b, dW, db, sW, sb, X_train, y_train, gamma, eta, beta)
+            min_slope = eta * obj.directional_derivative(dW, db, sW, sb);
             
+            sigma = 1;
+            
+            if obj.check_armijo(sigma, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+                if obj.check_pw(sigma, W, b, sW, sb, X_train, y_train, min_slope)
+                    return;
+                else
+                    sigma_pos = beta;
+                    k = 1;
+                    
+                    while obj.check_armijo(sigma_pos, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+                        k = k + 1;
+                        sigma_pos = beta^k;
+                    end
+                    
+                    sigma_neg = beta^(-1) * sigma_pos;
+                end
+            else
+                sigma_neg = beta^(-1);
+                k = 1;
+                
+                while ~obj.check_armijo(sigma_neg, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+                    k = k + 1;
+                    sigma_neg = beta^(-k);
+                end
+                
+                sigma_pos = beta * sigma_neg;
+            end
+            
+            while ~obj.check_pw(sigma_neg, W, b, sW, sb, X_train, y_train, min_slope)
+                s = (sigma_neg + sigma_pos) * 0.5;
+                if obj.check_armijo(s, W, b, dW, db, sW, sb, X_train, y_train, gamma)
+                    sigma_neg = s;
+                else
+                    sigma_pos = s;
+                end
+            end
+            
+            sigma = sigma_neg;
+        end
+        
+        function r = check_pw(obj, sigma, W, b, sW, sb, X_train, y_train, min_slope)
+            % Returns true if second Powell-Wolfe condition is satisfied.
+            
+            % x_new = x + sigma * s
+            [W_new, b_new] = obj.update_weights(sigma, W, b, sW, sb);
+            
+            % Slope at new point.
+            [~, dW_new, db_new, ~, ~] = obj.gradient_eval(W_new, b_new, X_train, y_train);
+            slope = obj.directional_derivative(dW_new, db_new, sW, sb);
+            
+            if slope >= min_slope
+                r = true;
+            else
+                r = false;
+            end
+        end
+        
     end
 end
