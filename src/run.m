@@ -3,27 +3,37 @@ close all;
 
 addpath(genpath('nn'));
 
-[X_train, y_train, X_test, y_test, dim, classes] = get_data('spirals', false);
+% Classification: spirals, Regression: reg_sinus.
+[X_train, y_train, X_test, y_test, dim, classes] = get_data(2, 'reg_sinus', true);
 
 %%
 
 % Define network architecture.
-layers = [dim, 20, 20, 10, 5, classes];
-[h, dh] = activation_function(2);
+layers = [dim, 20, 20, classes];
+[h, dh] = activation_function(1);
 loss = LeastSquares;
 
 network = Network(layers, h, dh, loss, X_train);
-network = network.train(X_train, y_train, get_params(3));
+
+%network = network.check_gradients(layers, X_train, y_train);
+network = network.train(X_train, y_train, get_params(2));
 
 [~, y] = network.fp(X_train);
-plot_result(X_train, y, 3);
+%plot_result(X_train, y, 3);
+
+figure(2);
+scatter(X_train, y);
+
+[~, y] = network.fp(X_test);
+figure(3);
+scatter(X_test, y);
 
 %% Helper functions.
 
-function [params] = get_params(ls)
+function params = get_params(ls)
     params.linesearch = ls; % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
     if ls == 1
-        params.stepsize = 0.1;
+        params.stepsize = 0.5;
     elseif ls == 2
         params.beta = 0.5;
         params.gamma = 10^-4;
@@ -35,43 +45,51 @@ function [params] = get_params(ls)
         error('Unsupported linesearch parameter.');
     end
     
-    params.iterations = 2000;
+    params.iterations = 30000;
     params.plot = 0;
 end
 
-function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
+function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot)
     addpath('datasets');
 
-    switch type
-        case 'corners'
-            data = corners();
-        case 'outlier'
-            data = outlier();
-        case 'halfkernel'
-            data = halfkernel();
-        case 'moon'
-            data = crescentfullmoon();
-        case 'clusters'
-            data = clusterincluster();
-        case 'spirals'
-            data = twospirals(1000, 560, 90, 1.2);
+    if type == 1
+        switch data_type
+            case 'corners'
+                data = corners();
+            case 'outlier'
+                data = outlier();
+            case 'halfkernel'
+                data = halfkernel();
+            case 'moon'
+                data = crescentfullmoon();
+            case 'clusters'
+                data = clusterincluster();
+            case 'spirals'
+                data = twospirals(1000, 560, 90, 1.2);
+        end
+    elseif type == 2
+        if data_type == 'reg_sinus'
+            x = linspace(0, 2*pi, 30);
+            y = sin(x) + 0.1 * randn(size(x));
+            data = [x; y]';
+        end
+    else
+       error('Unsupported type.'); 
     end
 
-    if plot
-        figure(1);
-        scatter(data(:,1), data(:,2), 10, data(:,3));
-        axis equal;
-        title('Ground truth');
-        drawnow
-    end
+    dim = size(data, 2)-1;
 
     % Shuffle data.
     shuffle = randsample(1:size(data, 1), size(data, 1));
-    X = data(shuffle, 1:2)';
-    y = data(shuffle, 3)+1;
-
-    dim = size(X, 1);
-    classes = max(y);
+    X = data(shuffle, 1:dim)';
+    
+    if type == 2
+        % Regression.
+        y = data(shuffle, dim+1);
+    else
+        % Classification.
+        y = data(shuffle, dim+1)+1;
+    end
 
     % Divide data into training and test set.
     n = uint64((2/3)*size(data, 1));
@@ -81,8 +99,31 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, plot)
     X_test = X(:, n+1:end);
     y_test = y(n+1:end, :);
     
-    y_train = one_hot(y_train);
-    y_test = one_hot(y_test);
+    if type == 2
+        classes = 1;
+        y_train = y_train';
+        y_test = y_test';
+    else
+        % Classification
+        y_train = one_hot(y_train);
+        y_test = one_hot(y_test);
+        classes = max(y);
+    end
+    
+    if do_plot
+        if dim == 2
+            figure(1);
+            scatter(data(:,1), data(:,2), 10, data(:,3));
+            axis equal;
+            title('Ground truth');
+            drawnow
+        elseif dim == 1
+            figure(1);
+            scatter(data(:,1), data(:,2));
+            title('Ground truth');
+            drawnow 
+        end
+    end
 end
 
 function [h, dh] = activation_function(type)
@@ -106,7 +147,7 @@ function plot_result(X_train, y, f)
     drawnow
 end
 
-function [x_onehot] = one_hot(x)
+function x_onehot = one_hot(x)
     % x: (N,1).
     classes = max(x);
 

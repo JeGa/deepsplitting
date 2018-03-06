@@ -7,7 +7,7 @@ classdef LeastSquares
             % y_train: (cls, N).
             
             N = size(y,2);
-            L = (1/(2*N)) * norm(y - y_train)^2;
+            L = (1/(2*N)) * sum(sum((y - y_train).^2));
         end
         
         function [g] = gradient(y, y_train)

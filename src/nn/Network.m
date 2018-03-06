@@ -27,8 +27,8 @@ classdef Network
             
             % Initialize network weights.
             for l=1:L
-                obj.W{l} = 0.1*randn(layers(l+1), layers(l));
-                obj.b{l} = 0.1*randn(layers(l+1), 1);
+                obj.W{l} = randn(layers(l+1), layers(l));
+                obj.b{l} = randn(layers(l+1), 1);
                 
                 % Initialize Lagrange multipliers for equality constraints.
                 obj.lambda{l} = ones(layers(l+1), size(X_train, 2));
@@ -65,7 +65,10 @@ classdef Network
                         sW, sb, X_train, y_train, params.gamma, params.eta, params.beta);
                 end
                 
-                disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ' (', num2str(i), ')']);
+                if mod(i, 100) == 0
+                    disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ...
+                        ' gradnorm: ', num2str(norm(obj.to_vec(dW, db))) ,' (', num2str(i), ')']);
+                end
                 
                 if params.plot
                     obj.plot_result(X_train, y, 2);
@@ -83,20 +86,66 @@ classdef Network
             L = obj.loss.loss(y, y_train);
         end
         
-%         function check_gradients(obj)
-%             
-%             f = 
-%             
-%             options = optimoptions(@fminunc, 'CheckGradients', true, 'SpecifyObjectiveGradient', true);
-%             
-%             [x fval exitflag output] = fminunc(@f, x0, options);
-%         end
+        function obj = check_gradients(obj, layers, X_train, y_train)
+            [x0, W_size, ~] = obj.to_vec(obj.W, obj.b);
+                       
+            options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 5000, ...
+                'SpecifyObjectiveGradient', true, 'CheckGradients', true);
+            
+            f = @(x) obj.fun(x, W_size, layers, X_train, y_train);
+            [x, ~] = fminunc(f, x0, options);
+            
+            [W_min, b_min] = obj.to_mat(x, W_size, layers);
+            
+            obj.W = W_min;
+            obj.b = b_min;
+        end
 
-%         function [L, g] = fun(obj, x)
-%             [Wc, ~] = to_mat(x);
-%             
-%             [obj, dW, db, L, y] = obj.gradient_eval(Wc, X_train, y_train); 
-%         end
+        function [L, g] = fun(obj, x, W_size, layers, X_train, y_train)
+            [Wc, bc] = obj.to_mat(x, W_size, layers);
+            
+            [~, dW, db, L, ~] = obj.gradient_eval(Wc, bc, X_train, y_train);
+            g = obj.to_vec(dW, db);
+        end
+        
+        function [x, W_size, b_size] = to_vec(~, W, b)
+            flatten = @(x) x(:);
+            
+            W_flat = cellfun(flatten, W, 'un', 0);
+            b_flat = cellfun(flatten, b, 'un', 0);
+            
+            W_vec = cat(1, W_flat{:});
+            b_vec = cat(1, b_flat{:});
+            
+            x = [W_vec; b_vec];
+            
+            W_size = size(W_vec);
+            b_size = size(b_vec);
+        end
+            
+        function [W, b] = to_mat(~, x, W_size, layers)
+            L = size(layers, 2)-1;
+            
+            W = cell(1, L);
+            b = cell(1, L);
+            
+            W_vec = x(1:W_size(1), 1);
+            b_vec = x(W_size(1)+1:end, 1);
+            
+            from_W = 1;
+            from_b = 1;
+            
+            for i=1:L
+               to_W = from_W + layers(i+1) * layers(i) - 1;
+               to_b = from_b + layers(i+1) - 1;
+                
+               W{i} = reshape(W_vec(from_W:to_W), layers(i+1), layers(i));
+               b{i} = reshape(b_vec(from_b:to_b), layers(i+1), 1);
+               
+               from_W = to_W + 1;
+               from_b = to_b + 1;
+            end
+        end
         
     end
     
