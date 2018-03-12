@@ -208,7 +208,73 @@ To efficiently implement backpropagation we can directly derive a matrix formula
 
 The gradients are represented by $\nabla_{W^l}E = D^l_W$ and $\nabla_{b^l}E = D^l_b$. Each row in the matrix $L_m$ is the transpose gradient w.r.t. each sample point $\nabla L(z^L_i)$. Each row of the matrix $H'$ is the derivative of the activation function applied element wise to the each sample point. For $D^l_b$ the summation is over the rows $i$ of the matrix $\delta^l_m$. Note that $D^l_W$ can be implemented faster using per element multiplication but is written in full matrix form for easier reading. The matrix $J^l$ is the Jacobian $\frac{\partial z^l}{\partial W^l}$ with $W^l$ in row-major or column-major vectorization. In this formulation the vector version of the error variable $\delta^l$ is used. The reshape function extracts the rows and columns accordingly to get the matrix form.
 
-\section{Additional notes and todos}
+\subsection{Softmax}
+
+The softmax function is often used as last layer in classification tasks. It enables to interpret the neural network outputs as probabilities. The softmax function $\phi: \R^d \to [0,1]^d$ and its Jacobian are defined as
+
+\begin{equation}
+	\begin{aligned}
+		\phi(x)_i &= \frac{e^{x_i}}{\sum_{j=1}^{d} e^{x_j}} \\
+		\phi'(x) &= \text{diag}(\phi(x)) - \phi(x) \phi(x)^T
+	\end{aligned}
+\end{equation}
+
+where $\sum_{i=1}^{d}\phi(x)_i = 1$. We also can write the softmax function in matrix form where $\phi$ is applied to each column of $x \in \R^{d \times N}$. The resulting Jacobian is then a block-diagonal matrix.
+
+%\subsection{Cross-Entropy loss}
+%
+%A very common loss function for classification is the cross-entropy loss (I wont state the explanation from information theory here). However, in the literature there are various derivations and formulations of this loss function. The cross entropy between two probability distributions $p$ and $q$ is defined as
+%
+%\begin{equation}
+%	\begin{aligned}
+%		H(p,q) = E_p[-\text{log}(q)].
+%	\end{aligned}
+%\end{equation}
+%
+%Starting from a general probabilistic viewpoint, lets define the likelihood of a family of models (indexed by the parameters $\theta$) given the data as $p(y|X;\theta)$ with $X$ being the input samples and $y$ the ground truth. In the maximum likelihood approach, we maximize this probability w.r.t. the parameters $\theta$ as shown in the following equation.
+%
+%\begin{equation}
+%	\begin{aligned}
+%		\theta_{ML} = && \underset{\theta}{\text{arg max}}
+%		&& p(y|X;\theta)
+%	\end{aligned}
+%\end{equation}
+%
+%Which is equivalent to minimizing the negative log likelihood. Additionally assuming i.i.d samples this results in
+%
+%\begin{equation}
+%\begin{aligned}
+%L(y_t;y) = -\text{log}((y_t)_y)
+%\end{aligned}
+%\end{equation}
+%
+%\begin{equation}
+%	p(y) = \prod_{i=1}^{c} \theta^{[y=i]}_i
+%\end{equation}
+%
+%\begin{equation}
+%	\begin{aligned}
+%		L(y_t;y) = -\text{log}((y_t)_y)
+%	\end{aligned}
+%\end{equation}
+%
+%So maximum likelihood results in minimizing the cross entropy between empirical data distribution and unknown model distribution.
+%
+%The $y_t$ can be interpreted as probability distribution (from a softmax layer for example), $y$ is the true label.
+%
+%Multinomial.
+%
+%Keep in mind that there is also a different definition of cross entropy loss. In classification, it is also possible to interpret the likelihood for each label separately as Bernoulli distributed. TODO. This results in the summation of all labels with a per-label cross entropy loss
+%
+%\begin{equation}
+%	\begin{aligned}
+%		L(y_t;y) = -\sum_{i=1}^{c} y_i \text{log}(y_t)_i + (1 - y_i) \text{log}(1 - (y_t)_i)
+%	\end{aligned}
+%\end{equation}
+%
+%with $c$ the number of classes. In this case, the outputs do not have to form a probability distribution and can be for example from a sigmoid function. In the case of binary classification (only two classes) the two definitions are equal.
+
+\section{Additional notes and to-dos}
 
 \begin{itemize}
 	\item Could add regularizer for the weights.

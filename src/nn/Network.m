@@ -27,8 +27,8 @@ classdef Network
             
             % Initialize network weights.
             for l=1:L
-                obj.W{l} = randn(layers(l+1), layers(l));
-                obj.b{l} = randn(layers(l+1), 1);
+                obj.W{l} = 0.1 * randn(layers(l+1), layers(l));
+                obj.b{l} = 0.1 * randn(layers(l+1), 1);
                 
                 % Initialize Lagrange multipliers for equality constraints.
                 obj.lambda{l} = ones(layers(l+1), size(X_train, 2));
@@ -65,7 +65,7 @@ classdef Network
                         sW, sb, X_train, y_train, params.gamma, params.eta, params.beta);
                 end
                 
-                if mod(i, 100) == 0
+                if mod(i, 50) == 0
                     disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ...
                         ' gradnorm: ', num2str(norm(obj.to_vec(dW, db))) ,' (', num2str(i), ')']);
                 end
@@ -249,7 +249,7 @@ classdef Network
             % f(x_new) - f(x)
             [~, L_new, ~] = obj.f_eval(W_new, b_new, X_train, y_train);
             [~, L_current, ~] = obj.f_eval(W, b, X_train, y_train);
-            f_new =  L_new - L_current;
+            f_new = L_new - L_current;
             
             slope = obj.directional_derivative(dW, db, sW, sb);
             

@@ -4,14 +4,15 @@ close all;
 addpath(genpath('nn'));
 
 % Classification: spirals, Regression: reg_sinus.
-[X_train, y_train, X_test, y_test, dim, classes] = get_data(2, 'reg_sinus', true);
+[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', true);
 
 %%
 
 % Define network architecture.
-layers = [dim, 20, 20, classes];
-[h, dh] = activation_function(1);
-loss = LeastSquares;
+layers = [dim, 10, 10, 5, classes];
+[h, dh] = activation_function(2);
+%loss = LeastSquares;
+loss = NLLSoftmax;
 
 network = Network(layers, h, dh, loss, X_train);
 
@@ -19,21 +20,18 @@ network = Network(layers, h, dh, loss, X_train);
 network = network.train(X_train, y_train, get_params(2));
 
 [~, y] = network.fp(X_train);
-%plot_result(X_train, y, 3);
-
-figure(2);
-scatter(X_train, y);
+y = Softmax.softmax(y);
+plot_result_cls(X_train, y, 3);
 
 [~, y] = network.fp(X_test);
-figure(3);
-scatter(X_test, y);
+plot_result_cls(X_test, y, 4);
 
 %% Helper functions.
 
 function params = get_params(ls)
     params.linesearch = ls; % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
     if ls == 1
-        params.stepsize = 0.5;
+        params.stepsize = 0.1;
     elseif ls == 2
         params.beta = 0.5;
         params.gamma = 10^-4;
@@ -45,7 +43,7 @@ function params = get_params(ls)
         error('Unsupported linesearch parameter.');
     end
     
-    params.iterations = 30000;
+    params.iterations = 500;
     params.plot = 0;
 end
 
@@ -65,7 +63,7 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_
             case 'clusters'
                 data = clusterincluster();
             case 'spirals'
-                data = twospirals(1000, 560, 90, 1.2);
+                data = twospirals(1000, 360, 90, 1.2);
         end
     elseif type == 2
         if data_type == 'reg_sinus'
@@ -136,7 +134,7 @@ function [h, dh] = activation_function(type)
     end
 end
 
-function plot_result(X_train, y, f)
+function plot_result_cls(X_train, y, f)
     [~,C] = max(y, [], 1);
     C = C - 1;
 
@@ -144,6 +142,12 @@ function plot_result(X_train, y, f)
     figure(f);
     scatter(X_train(1,:), X_train(2,:), 10, C);
     axis equal;
+    drawnow
+end
+
+function plot_result_reg(X_train, y, f)
+    figure(f);
+    scatter(X_train, y);
     drawnow
 end
 
