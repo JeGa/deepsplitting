@@ -6,6 +6,7 @@
 
 \usepackage{a4wide}
 \usepackage{tikz}
+%\usepackage{parskip}
 
 \title{Ideas for Splitting Deep Networks}
 \author{}
@@ -14,35 +15,42 @@
 \begin{document}
 \maketitle
 
+\endlinechar=-1
+
 \section{Objective function}
 
-The aim is to solve a supervised regression or classification problem involving a highly nested objective function. A mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$ should be learned. The loss function can be formulated as
+The aim is to solve a supervised regression or classification problem involving a highly nested objective function. The aim is to learn a mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$. The loss function can be formulated as
 
 \begin{equation}
-E(W) = \frac{1}{N} \sum_{i=1}^{N} L(f(W;x_i);y_i)
+E(\{W_j\}) = \frac{1}{N} \sum_{i=1}^{N} L(f(\{W_j\};x_i);y_i)
 \label{eq:1}
 \end{equation}
 
-with some appropriate error measure $L(y_t;y)$. This error measure can for example be the squared l2-loss $L(y_t;y) = \frac{1}{2} \| y_t - y \|^2_2$. The function $f(W;x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
+with some appropriate error measure $L(y_p;y)$ and model parametrization $\{W_j\}$. The error measure can for example be the squared l2-loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ are the model predictions and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
 
 \section{Solution concept}
 
-In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously. Additionally, without loss of generality we consider a 2-layer neural network mapping $f(W;x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
+In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously. Additionally, without loss of generality we consider a 2-layer neural network mapping $f(\{W_j\};x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
 
 \begin{equation}
 	\begin{aligned}
-		& \underset{\{W_i\}}{\text{minimize}}
+		& \underset{\{W_j\}}{\text{minimize}}
 		& & L(W_3h(W_2h(W_1x);y).
 	\end{aligned}
+	\label{eq:loss_function}
 \end{equation}
 
 To split the nested objective function we decouple the weights and activation functions
-by introducing additional variables and adding the appropriate constraints. This reformulated problem is equal to the original problem and can be written as
+by introducing additional variables and adding the appropriate constraints. In the following are different variants of decoupling the loss function. Note that we omit the constant $y$ in the following equations for the sake of simplicity.
+
+\subsection{Idea 1: Per-layer decoupling}
+
+By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
 
 \begin{equation}
 	\begin{aligned}
-		& \underset{\{W_i,a_i,z\}}{\text{minimize}}
-		&& L(z;y). \\
+		& \underset{\{W_j\},\{a_i\},z}{\text{minimize}}
+		&& L(z) \\
 		& \text{subject to}
 		&&  a_1 = h(W_1x), \\
 		&&& a_2 = h(W_2a_1), \\
@@ -50,28 +58,28 @@ by introducing additional variables and adding the appropriate constraints. This
 	\end{aligned}
 \end{equation}
 
-with the new variables $a_1, a_2, z$. The augmented Lagrangian of this equally constrained problem is
+with the new variables $a_1, a_2, z$. The augmented Lagrangian of this equality constrained problem is
 
 \begin{equation}
 	\begin{aligned}
-		\mathcal{L}(y,z,a,\lambda) = L(y,z) + 
-		& \inner{\lambda_1}{h(W_1x)-a_1} + \rho/2 \| h(W_1x)-a_1 \|^2 + \\
-		& \inner{\lambda_2}{h(W_2a_1)-a_2} + \rho/2 \| h(W_2a_1)-a_2 \|^2 + \\
-		& \inner{\lambda_3}{W_3a_2-z} + \rho/2 \| W_3a_2-z \|^2.
+		\mathcal{L}(\{W_j\}, \{a_i\}, z, \{\lambda_j\}) = L(z) + 
+		& \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+		& \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
+		& \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2.
 	\end{aligned}
 \end{equation}
 
-with $a = (a_1,a_2)^T$, $\lambda = (\lambda_1, \lambda_2, \lambda_3)^T$ and $\rho \in \R$. For minimizing the objective we update the weights and constraint variables of subproblems in an alternating fashion using gradient descent. In each update step we only consider the variables of one constraint and fix all other terms of the augmented Lagrangian. This results in one subproblem $\mathcal{H}_i$ for each constraint.
+For minimizing the objective we update the weights and constraint variables of subproblems in an alternating fashion using gradient descent. In each update step we only consider the variables of one constraint and fix all other terms of the augmented Lagrangian. This results in one subproblem $\mathcal{H}_i$ for each constraint.
 
 \begin{equation}
 	\begin{aligned}
-		\mathcal{H}_1(W_1,a_1,\lambda_1) &= && \inner{\lambda_1}{h(W_1x)-a_1} + \rho/2 \| h(W_1x)-a_1 \|^2 + \\
-			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + \rho/2 \| h(W_2a_1)-a_2 \|^2 \\
-		\mathcal{H}_2(W_2,a_1,a_2,\lambda_2) &= && \inner{\lambda_2}{h(W_2a_1)-a_2} + \rho/2 \| h(W_2a_1)-a_2 \|^2 + \\
-			& && \inner{\lambda_1}{h(W_1x)-a_1} + \rho/2 \| h(W_1x)-a_1 \|^2 + \\
-			& && \inner{\lambda_3}{W_3a_2-z} + \rho/2 \| W_3a_2-z \|^2 \\
-		\mathcal{H}_3(W_3,a_2,z,\lambda_3) &= && \inner{\lambda_3}{W_3a_2-z} + \rho/2 \| W_3a_2-z \|^2 + L(y,z) \\
-			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + \rho/2 \| h(W_2a_1)-a_2 \|^2 
+		\mathcal{H}_1(W_1,a_1,\lambda_1) &= && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 \\
+		\mathcal{H}_2(W_2,a_1,a_2,\lambda_2) &= && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
+			& && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+			& && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 \\
+		\mathcal{H}_3(W_3,a_2,z,\lambda_3) &= && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 + L(y,z) \\
+			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 
 	\end{aligned}
 \end{equation}
 
@@ -86,7 +94,38 @@ We need to take special care of the first subproblem (constraint for the first l
 	\end{aligned}
 \end{equation}
 
-which are gradient descent steps for the primal variables and gradient ascent steps for the dual variable $\lambda$. For $\mathcal{H}_1$ only $W_1$, $a_2$ and $\lambda_1$ need to be updated since $x$ is a constant. For the last subproblem $\mathcal{H}_{K+1}$ we need to add $\nabla_zL(y,z)$ to the gradient with respect to $z$.
+which are gradient descent steps for the primal variables and gradient ascent steps for the dual variable $\lambda$. For $\mathcal{H}_1$ only $W_1$, $a_2$ and $\lambda_1$ need to be updated since $x$ is a constant. For the last subproblem $\mathcal{H}_{K+1}$ we need to add $\nabla_zL(z)$ to the gradient with respect to $z$.
+
+\subsection{Idea 2: Last-layer decoupling}
+
+By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
+
+\begin{equation}
+	\begin{aligned}
+		& \underset{\{W_j\},z}{\text{minimize}}
+		&& L(z) \\
+		& \text{subject to}
+		&& z = f(\{W_j\}).
+	\end{aligned}
+\end{equation}
+
+The augmented Lagrangian of this equality constrained problem is
+
+\begin{equation}
+	\begin{aligned}
+		\mathcal{L}(\{W_j\}, z, \lambda) = L(z) + \inner{\lambda}{f(\{W_j\})-z} + (\rho/2)\| f(\{W_j\})-z \|^2.
+	\end{aligned}
+\end{equation}
+
+Applying dual ascent to this yields
+
+\begin{equation}
+	\begin{aligned}
+		z^{k+1} &= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^k, z, \lambda^k) \\
+		\{W_j\}^{k+1} &= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^{k+1}, \lambda^k) \\
+		\lambda^{k+1} &= \lambda^k + \rho (f(\{W_j\}^{k+1})-z^{k+1})
+	\end{aligned}
+\end{equation}
 
 \section{Appendix}
 
@@ -195,7 +234,7 @@ Special care needs to be taken at the last layer of the network. Since it is usu
 	\end{aligned}
 \end{equation}
 
-To efficiently implement backpropagation we can directly derive a matrix formulation so the iteration over all sample points is not required. By reformulating the loss function as $L(f(W;X),Y)$ with $X \in \R^{d \times N}, Y \in \R^{c \times N}, L: (\R^{c \times N},\R^{c \times N}) \to \R$, sample dimension $d$ and output dimension $c$ the activations and linearities are now matrices. To calculate the derivatives the involved matrices are vectorized in column-major order. Working through the stated derivation again but with the vectorized matrices we can rewrite the expressions in matrix form as
+To efficiently implement backpropagation we can directly derive a matrix formulation so the iteration over all sample points is not required. By reformulating the loss function as $L(f(W;X);Y)$ with $X \in \R^{d \times N}, Y \in \R^{c \times N}, L: (\R^{c \times N},\R^{c \times N}) \to \R$, sample dimension $d$ and output dimension $c$ the activations and linearities are now matrices. To calculate the derivatives the involved matrices are vectorized in column-major order. Working through the stated derivation again but with the vectorized matrices we can rewrite the expressions in matrix form as
 
 \begin{equation}
 	\begin{aligned}

@@ -17,7 +17,7 @@ loss = NLLSoftmax;
 network = Network(layers, h, dh, loss, X_train);
 
 %network = network.check_gradients(layers, X_train, y_train);
-network = network.train(X_train, y_train, get_params(2));
+network = network.train(X_train, y_train, get_params(3));
 
 [~, y] = network.fp(X_train);
 y = Softmax.softmax(y);
@@ -25,6 +25,8 @@ plot_result_cls(X_train, y, 3);
 
 [~, y] = network.fp(X_test);
 plot_result_cls(X_test, y, 4);
+
+plot_grid(network);
 
 %% Helper functions.
 
@@ -158,4 +160,23 @@ function x_onehot = one_hot(x)
     x_onehot = zeros(classes, size(x,1));
     ind = sub2ind(size(x_onehot), x', 1:size(x',2));
     x_onehot(ind) = 1;
+end
+
+function plot_grid(network)
+    [X, Y] = meshgrid(-10:0.1:10, -10:0.1:10);
+    X_input = [X(:), Y(:)]';
+    
+    [~, y] = network.fp(X_input);
+    y = Softmax.softmax(y);
+    
+    xsize = size(X,2);
+    ysize = size(X,1);
+    
+    [~,C] = max(y, [], 1);
+    C = C - 1;
+    y = reshape(C, ysize, xsize);
+    
+    figure(5);
+    axis equal;
+    image(y', 'CDataMapping', 'scaled')
 end
