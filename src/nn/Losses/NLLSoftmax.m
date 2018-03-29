@@ -1,15 +1,15 @@
 classdef NLLSoftmax
    % Combines Softmax and NLLCategorial.
    
-    methods(Static)
+    methods
         
-        function L = loss(y, y_train)
+        function L = loss(~, y, y_train)
             y = Softmax.softmax(y);
             
             L = NLLCategorial.loss(y, y_train);
         end
         
-        function g = gradient(y, y_train)
+        function g = gradient(~, y, y_train)
             % g: (d, N) Matrix form gradient.
             [d, N] = size(y);
             
@@ -22,7 +22,7 @@ classdef NLLSoftmax
             g = reshape(g, d, N);
         end
         
-        function check()
+        function check(~)
             x0 = [2, 5; 1 2]';
             x0_train = [1, 0; 0 1]';
             
@@ -33,13 +33,25 @@ classdef NLLSoftmax
             fminunc(f, x0(:), options);
         end
         
-        function [f,g] = fun(x, x_train)
+        function [f,g] = fun(~, x, x_train)
             [d, N] = size(x_train);
             x = reshape(x, d, N);
             
             f = NLLSoftmax.loss(x, x_train);
             g = NLLSoftmax.gradient(x, x_train);
             g = g(:);
+        end
+        
+        function z = primal_update(~, y, lambda, y_train, rho)
+            % Augmented lagrangian primal update.
+            z = zeros(size(y));
+            
+            r = y + lambda/rho;
+            
+            for i = 1:size(y_train, 2)
+                [~, cls] = max(y_train(:,i));
+                z(:, i) = prox_cross_entropy(r(:, i), 1/rho, cls);
+            end
         end
         
     end

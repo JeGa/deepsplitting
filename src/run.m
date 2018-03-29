@@ -2,38 +2,46 @@ clearvars;
 close all;
 
 addpath(genpath('nn'));
+addpath(genpath('baseline'));
 
 % Classification: spirals, Regression: reg_sinus.
-[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', true);
+[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', false);
 
 %%
 
 % Define network architecture.
-layers = [dim, 10, 10, 5, classes];
+layers = [dim, 12, 12, classes];
 [h, dh] = activation_function(2);
-%loss = LeastSquares;
-loss = NLLSoftmax;
 
-network = Network(layers, h, dh, loss, X_train);
+N = size(y_train, 2);
+loss = LeastSquares(1/N);
+%loss = NLLSoftmax();
 
-%network = network.check_gradients(layers, X_train, y_train);
-network = network.train(X_train, y_train, get_params(3));
+network = LLCNetwork(layers, h, dh, loss, X_train);
 
-[~, y] = network.fp(X_train);
-y = Softmax.softmax(y);
-plot_result_cls(X_train, y, 3);
+%network = network.check_gradients_primal2(layers, X_train, y_train);
+network = network.train(X_train, y_train, get_params(2));
 
+% NLLSoftmax.
+%[~, y] = network.fp(X_train);
+%y = Softmax.softmax(y);
+%plot_result_cls(X_train, y, 3);
+
+% LeastSquares
 [~, y] = network.fp(X_test);
 plot_result_cls(X_test, y, 4);
 
-plot_grid(network);
+%[~, y] = network.fp(X_test);
+%plot_result_reg(X_test, y, 4);
+
+%plot_grid(network);
 
 %% Helper functions.
 
 function params = get_params(ls)
     params.linesearch = ls; % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
     if ls == 1
-        params.stepsize = 0.1;
+        params.stepsize = 0.001;
     elseif ls == 2
         params.beta = 0.5;
         params.gamma = 10^-4;
@@ -46,7 +54,6 @@ function params = get_params(ls)
     end
     
     params.iterations = 500;
-    params.plot = 0;
 end
 
 function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot)
@@ -65,7 +72,7 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_
             case 'clusters'
                 data = clusterincluster();
             case 'spirals'
-                data = twospirals(1000, 360, 90, 1.2);
+                data = twospirals(250, 360, 90, 1.2);
         end
     elseif type == 2
         if data_type == 'reg_sinus'

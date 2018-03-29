@@ -107,23 +107,39 @@ By decoupling and introducing constraints we can reformulate problem \ref{eq:los
 		& \text{subject to}
 		&& z = f(\{W_j\}).
 	\end{aligned}
+	\label{eq:llc_problem}
 \end{equation}
 
 The augmented Lagrangian of this equality constrained problem is
 
 \begin{equation}
 	\begin{aligned}
-		\mathcal{L}(\{W_j\}, z, \lambda) = L(z) + \inner{\lambda}{f(\{W_j\})-z} + (\rho/2)\| f(\{W_j\})-z \|^2.
+		\mathcal{L}(\{W_j\}, z, \lambda)
+		&= L(z) + \inner{\lambda}{f(\{W_j\})-z} + (\rho/2)\| f(\{W_j\})-z \|^2 \\
+		&= L(z) + (\rho/2) \| f(\{W_j\}) - z + (1/\rho) \lambda \|^2 - (1/(2 \rho)) \| \lambda \|^2.
 	\end{aligned}
 \end{equation}
 
-Applying dual ascent to this yields
+Note that by adding a regularizer $R(\{W_j\}) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem \ref{eq:llc_problem} yields
 
 \begin{equation}
 	\begin{aligned}
-		z^{k+1} &= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^k, z, \lambda^k) \\
-		\{W_j\}^{k+1} &= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^{k+1}, \lambda^k) \\
-		\lambda^{k+1} &= \lambda^k + \rho (f(\{W_j\}^{k+1})-z^{k+1})
+		z^{k+1}
+		&:= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^k, z, \lambda^k)
+		= \underset{z}{\text{arg min }} L(z) + (\rho/2) \| f(\{W_j\}^k) - z + (1/\rho) \lambda^k \|^2 \\
+		\{W_j\}^{k+1}
+		&:= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^{k+1}, \lambda^k)
+		= \underset{\{W_j\}}{\text{arg min }} (\rho/2) \| f(\{W_j\}) - z^{k+1} + (1/\rho) \lambda^k \|^2 \\
+		\lambda^{k+1} &:= \lambda^k + \rho (f(\{W_j\}^{k+1})-z^{k+1}).
+	\end{aligned}
+\end{equation}
+
+The gradients of the two primal problems can be written as
+
+\begin{equation}
+	\begin{aligned}
+		\nabla_z \mathcal{L} &= \nabla L(z) - \lambda^k - \rho (f(\{W_j\}^k) - z) \\
+		\nabla_{W_j} \mathcal{L} &= \rho J_f(\{W_j\})^T (f(\{W_j\}) - z^k + (1/\rho) \lambda^k).
 	\end{aligned}
 \end{equation}
 
@@ -179,7 +195,7 @@ As baseline we train the loss function using gradient descent. To calculate the 
 	\label{eq:backprop_chainrule}
 \end{equation}
 
-Note that $\frac{\partial z^l_i}{\partial W^l_{jk}} = 0$ and $\frac{\partial z^l_i}{\partial b_j^l} = 0$ for all $i \neq j$. We now introduce for each layer the error variable (row vector)
+Note that $\frac{\partial z^l_i}{\partial W^l_{jk}} = 0$ and $\frac{\partial z^l_i}{\partial b_j^l} = 0$ for all $i \neq j$ and $\frac{\partial a^l}{\partial z^l}$ is a diagonal matrix. We now introduce for each layer the error variable (row vector)
 
 \begin{equation}
 	\begin{aligned}

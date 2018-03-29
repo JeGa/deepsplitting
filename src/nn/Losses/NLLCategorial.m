@@ -15,7 +15,7 @@ classdef NLLCategorial
         function g = gradient(y, y_train)
             % y: (cls, N).
             % y_train: (cls, N).
-            % g: (1, cls*N) True gradient (vectorized input).
+            % g: (1, cls*N) True derivative (vectorized input).
 
             [cls, N] = size(y);
             
