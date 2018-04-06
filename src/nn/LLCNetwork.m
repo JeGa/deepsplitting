@@ -44,20 +44,6 @@ classdef LLCNetwork < Network
             end
         end
         
-        function obj = check_gradients_primal1(obj, ~, X_train, y_train)
-            v0 = obj.v(:);
-            
-            options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 2000, ...
-                'SpecifyObjectiveGradient', true, 'CheckGradients', true, 'FiniteDifferenceType', 'central');
-            
-            f = @(x) obj.fun_primal1(x, X_train, y_train);
-            [x, ~] = fminunc(f, v0, options);
-            
-            v_min = reshape(x, size(obj.v));
-            
-            obj.v = v_min;
-        end
-        
         function obj = check_gradients_primal2(obj, layers, X_train, y_train)
             [x0, W_size, ~] = obj.to_vec(obj.W, obj.b);
             
@@ -83,6 +69,7 @@ classdef LLCNetwork < Network
         
         function obj = primal2(obj, X_train, y_train, params)
             i = 0;
+            max_iter = 1;
             
             while 1
                 i = i + 1;
@@ -105,7 +92,7 @@ classdef LLCNetwork < Network
                 % Gradient norm.
                 gradnorm = sqrt(sum(cellfun(@(dW, db) sum([dW(:);db(:)].^2), dW, db)));
                             
-                if gradnorm <= 10^-2 || stepsize <= 10^-6 || i == 1
+                if gradnorm <= 10^-2 || stepsize <= 10^-6 || i == max_iter
                     break;
                 end
             end
@@ -173,21 +160,6 @@ classdef LLCNetwork < Network
             % this could be optimized to just do one forward pass.
             r = obj.v - (1/obj.rho) .* obj.lambda;
             [~, dW, db, ~, ~] = obj.gradient_eval(W, b, X_train, r, LeastSquares(obj.rho));
-        end
-
-        function [obj, L, dv] = primal1_gradient_eval(obj, v, X_train, y_train)
-            % For primal1 W, b and lambda are fixed.
-            [~, ~, ~, L, y]  = obj.lagrangian_eval(obj.W, obj.b, obj.lambda, v, X_train, y_train);
-            
-            dv = obj.loss.gradient(v, y_train) - obj.lambda - obj.rho * (y - v);
-        end
-        
-        function [L, g] = fun_primal1(obj, x, X_train, y_train)
-            vc = reshape(x, size(obj.v));
-            
-            [~, L, dv] = obj.primal1_gradient_eval(vc, X_train, y_train);
-            
-            g = dv(:);
         end
 
         function [L, g] = fun_primal2(obj, x, W_size, layers, X_train, y_train)

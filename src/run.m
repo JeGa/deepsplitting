@@ -39,7 +39,10 @@ plot_result_cls(X_test, y, 4);
 %% Helper functions.
 
 function params = get_params(ls)
-    params.linesearch = ls; % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
+    % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
+    
+    params.linesearch = ls;
+    
     if ls == 1
         params.stepsize = 0.001;
     elseif ls == 2
@@ -53,7 +56,7 @@ function params = get_params(ls)
         error('Unsupported linesearch parameter.');
     end
     
-    params.iterations = 500;
+    params.iterations = 3000;
 end
 
 function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot)
