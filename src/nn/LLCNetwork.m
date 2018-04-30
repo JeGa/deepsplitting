@@ -45,7 +45,7 @@ classdef LLCNetwork < Network
         end
         
         function obj = check_gradients_primal2(obj, layers, X_train, y_train)
-            x0 = obj.to_vec(obj.W, obj.b);
+            x0 = obj.to_vec(obj.W, obj.b, 2);
             
             options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 2000, ...
                 'SpecifyObjectiveGradient', true, 'CheckGradients', true, 'FiniteDifferenceType', 'central');
@@ -53,7 +53,7 @@ classdef LLCNetwork < Network
             f = @(x) obj.fun_primal2(x, layers, X_train, y_train);
             [x, ~] = fminunc(f, x0, options);
             
-            [W_min, b_min] = obj.to_mat(x, layers);
+            [W_min, b_min] = obj.to_mat(x, layers, 2);
             
             obj.W = W_min;
             obj.b = b_min;
@@ -219,11 +219,11 @@ classdef LLCNetwork < Network
         end
 
         function [L, g] = fun_primal2(obj, x, layers, X_train, y_train)
-            [W, b] = obj.to_mat(x, layers);
+            [W, b] = obj.to_mat(x, layers, 2);
             
             [obj, L, dW, db] = obj.primal2_gradient_eval(W, b, X_train, y_train);
             
-            g = obj.to_vec(dW, db);
+            g = obj.to_vec(dW, db, 2);
         end
         
     end

@@ -7,6 +7,7 @@ classdef Network
         h % Activation function.
         dh % Derivative of activation function.
         loss % Object for calculating loss and its gradient.
+        layers % Array with number of hidden units (including input and output).
     end
     
     methods
@@ -14,6 +15,8 @@ classdef Network
         function obj = Network(layers, h, dh, loss, X_train)
             % Number of layers (including last linear layer).
             L = size(layers, 2)-1;
+            
+            obj.layers = layers;
             
             obj.W = cell(1, L);
             obj.b = cell(1, L);
@@ -48,7 +51,7 @@ classdef Network
         
         function obj = check_gradients(obj, layers, X_train, y_train)
             % Checks the gradients computed by backpropagation.
-            x0 = obj.to_vec(obj.W, obj.b);
+            x0 = obj.to_vec(obj.W, obj.b, 2);
                        
             options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 5000, ...
                 'SpecifyObjectiveGradient', true, 'CheckGradients', true);
@@ -56,7 +59,7 @@ classdef Network
             f = @(x) obj.fun(x, layers, X_train, y_train);
             [x, ~] = fminunc(f, x0, options);
             
-            [W_min, b_min] = obj.to_mat(x, layers);
+            [W_min, b_min] = obj.to_mat(x, layers, 2);
             
             obj.W = W_min;
             obj.b = b_min;
@@ -205,26 +208,34 @@ classdef Network
         end
         
         function [L, g] = fun(obj, x, layers, X_train, y_train)
-            [Wc, bc] = obj.to_mat(x, layers);
+            [Wc, bc] = obj.to_mat(x, layers, 2);
             
             [~, dW, db, L, ~] = obj.gradient_eval(Wc, bc, X_train, y_train, obj.loss);
-            g = obj.to_vec(dW, db);
+            g = obj.to_vec(dW, db, 2);
         end
         
-        function x = to_vec(~, W, b)
-            % Column major order for W.
+        function x = to_vec(~, W, b, order)
+            % order: 1 = row-major, 2 = column-major.
             flatten = @(x) x(:);
             
-            W_flat = cellfun(flatten, W, 'un', 0);
-            b_flat = cellfun(flatten, b, 'un', 0);
-            
+            if order == 1
+                flatten_tp = @(x) flatten(x');
+                
+                W_flat = cellfun(flatten_tp, W, 'un', 0);
+                b_flat = cellfun(flatten_tp, b, 'un', 0);
+            elseif order == 2
+                W_flat = cellfun(flatten, W, 'un', 0);
+                b_flat = cellfun(flatten, b, 'un', 0);
+            end
+
             W_vec = cat(1, W_flat{:});
             b_vec = cat(1, b_flat{:});
             
             x = [W_vec; b_vec];
         end
             
-        function [W, b] = to_mat(~, x, layers)
+        function [W, b] = to_mat(~, x, layers, order)
+            % order: 1 = row-major, 2 = column-major.
             L = size(layers, 2)-1;
             
             W = cell(1, L);
@@ -242,9 +253,14 @@ classdef Network
                to_W = from_W + layers(i+1) * layers(i) - 1;
                to_b = from_b + layers(i+1) - 1;
                 
-               W{i} = reshape(W_vec(from_W:to_W), layers(i+1), layers(i));
-               b{i} = reshape(b_vec(from_b:to_b), layers(i+1), 1);
+               if order == 1
+                   W{i} = reshape(W_vec(from_W:to_W), layers(i), layers(i+1))';
+               elseif order == 2
+                   W{i} = reshape(W_vec(from_W:to_W), layers(i+1), layers(i));
+               end
                
+               b{i} = reshape(b_vec(from_b:to_b), layers(i+1), 1);
+
                from_W = to_W + 1;
                from_b = to_b + 1;
             end
