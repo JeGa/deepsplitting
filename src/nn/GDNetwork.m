@@ -1,6 +1,5 @@
 classdef GDNetwork < Network
     methods
-        
         function obj = GDNetwork(layers, h, dh, loss, X_train)
            obj@Network(layers, h, dh, loss, X_train);
         end

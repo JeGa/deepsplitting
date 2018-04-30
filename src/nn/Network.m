@@ -48,15 +48,15 @@ classdef Network
         
         function obj = check_gradients(obj, layers, X_train, y_train)
             % Checks the gradients computed by backpropagation.
-            [x0, W_size, ~] = obj.to_vec(obj.W, obj.b);
+            x0 = obj.to_vec(obj.W, obj.b);
                        
             options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 5000, ...
                 'SpecifyObjectiveGradient', true, 'CheckGradients', true);
             
-            f = @(x) obj.fun(x, W_size, layers, X_train, y_train);
+            f = @(x) obj.fun(x, layers, X_train, y_train);
             [x, ~] = fminunc(f, x0, options);
             
-            [W_min, b_min] = obj.to_mat(x, W_size, layers);
+            [W_min, b_min] = obj.to_mat(x, layers);
             
             obj.W = W_min;
             obj.b = b_min;
@@ -148,9 +148,10 @@ classdef Network
             dW = reshape(sum(error_shaped .* a_shaped,1), in_dim, out_dim)';
         end
         
-        function [obj, dW, db, y] = gradient_eval_noloss(obj, W, b, X_train)
-            % Compute gradient of f(({W_j},{b_j})). Note that there is no
-            % error function. The errors are now Jacobians.
+        function [obj, dW, db, y] = jacobian_eval_noloss(obj, W, b, X_train)
+            % Compute the jacobian of f(({W_j},{b_j})). Note that there is no
+            % error function. The errors are now Jacobians. The W matrices are
+            % vectorized in row-major order.
             obj = obj.forwardpass(W, b, X_train);
             y = obj.z{size(W, 2)};
             
@@ -203,14 +204,14 @@ classdef Network
             D = D .* A;
         end
         
-        function [L, g] = fun(obj, x, W_size, layers, X_train, y_train)
-            [Wc, bc] = obj.to_mat(x, W_size, layers);
+        function [L, g] = fun(obj, x, layers, X_train, y_train)
+            [Wc, bc] = obj.to_mat(x, layers);
             
             [~, dW, db, L, ~] = obj.gradient_eval(Wc, bc, X_train, y_train, obj.loss);
             g = obj.to_vec(dW, db);
         end
         
-        function [x, W_size, b_size] = to_vec(~, W, b)
+        function x = to_vec(~, W, b)
             % Column major order for W.
             flatten = @(x) x(:);
             
@@ -221,19 +222,18 @@ classdef Network
             b_vec = cat(1, b_flat{:});
             
             x = [W_vec; b_vec];
-            
-            W_size = size(W_vec);
-            b_size = size(b_vec);
         end
             
-        function [W, b] = to_mat(~, x, W_size, layers)
+        function [W, b] = to_mat(~, x, layers)
             L = size(layers, 2)-1;
             
             W = cell(1, L);
             b = cell(1, L);
             
-            W_vec = x(1:W_size(1), 1);
-            b_vec = x(W_size(1)+1:end, 1);
+            W_size = layers(1:end-1) * layers(2:end)';
+            
+            W_vec = x(1:W_size, 1);
+            b_vec = x(W_size+1:end, 1);
             
             from_W = 1;
             from_b = 1;

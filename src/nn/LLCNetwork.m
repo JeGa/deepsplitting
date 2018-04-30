@@ -25,7 +25,7 @@ classdef LLCNetwork < Network
             losses = zeros(params.iterations);
             
             for i = 1:params.iterations
-                obj = obj.primal2(X_train, y_train, params);
+                obj = obj.primal2_levmarq(X_train, y_train, params);
                 
                 obj = obj.primal1(X_train, y_train);
                 
@@ -45,15 +45,15 @@ classdef LLCNetwork < Network
         end
         
         function obj = check_gradients_primal2(obj, layers, X_train, y_train)
-            [x0, W_size, ~] = obj.to_vec(obj.W, obj.b);
+            x0 = obj.to_vec(obj.W, obj.b);
             
             options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 2000, ...
                 'SpecifyObjectiveGradient', true, 'CheckGradients', true, 'FiniteDifferenceType', 'central');
             
-            f = @(x) obj.fun_primal2(x, W_size, layers, X_train, y_train);
+            f = @(x) obj.fun_primal2(x, layers, X_train, y_train);
             [x, ~] = fminunc(f, x0, options);
             
-            [W_min, b_min] = obj.to_mat(x, W_size, layers);
+            [W_min, b_min] = obj.to_mat(x, layers);
             
             obj.W = W_min;
             obj.b = b_min;
@@ -67,7 +67,7 @@ classdef LLCNetwork < Network
             obj.v = obj.loss.primal_update(y, obj.lambda, y_train, obj.rho);
         end
         
-        function obj = primal2(obj, X_train, y_train, params)
+        function obj = primal2_gradientstep(obj, X_train, y_train, params)
             i = 0;
             max_iter = 1;
             
@@ -95,6 +95,62 @@ classdef LLCNetwork < Network
                 if gradnorm <= 10^-2 || stepsize <= 10^-6 || i == max_iter
                     break;
                 end
+            end
+        end
+        
+        function obj = primal2_levmarq(obj, X_train, y_train, params)
+            i = 0;
+            max_iter = 1;
+           
+            % Damping factor.
+            M = 0.001;
+            factor = 10;
+           
+            while 1
+                i = i + 1;
+                
+                [~, loss, ~, ~, ~] = obj.lagrangian(X_train, y_train);
+                
+                while 1
+                    [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, X_train, M);
+                    
+                    [~, loss_new, ~, ~, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
+                
+                    if loss < loss_new
+                       M = M * factor;
+                    else
+                       obj.W = W_new;
+                       obj.b = b_new;
+                       
+                       M = M / factor;
+                       break;
+                    end
+                end
+                
+                if i == max_iter
+                    break; 
+                end
+            end
+        end
+        
+        function [W_new, b_new] = levmarq_step(obj, W, b, X_train, M)
+            [obj, dW, db, ~] = obj.jacobian_eval_noloss(W, b, X_train);
+
+            [~, y] = obj.fp_eval(W, b, X_train);
+            r = -obj.lambda(:)/obj.rho + obj.v(:) -y(:);
+
+            L = size(dW, 2);
+            W_new = cell(1, L);
+            b_new = cell(1, L);
+
+            solve_step = @(J, r, M) (J'*J + M * eye(size(J, 2))) \ J'*r;
+
+            for j = 1:L
+                sW = solve_step(dW{j}, r, M);
+                sb = solve_step(db{j}, r, M);
+
+                W_new{j} = W{j} + reshape(sW, size(W{j}, 2), size(W{j}, 1))';
+                b_new{j} = b{j} + reshape(sb, size(b{j}));
             end
         end
         
@@ -162,8 +218,8 @@ classdef LLCNetwork < Network
             [~, dW, db, ~, ~] = obj.gradient_eval(W, b, X_train, r, LeastSquares(obj.rho));
         end
 
-        function [L, g] = fun_primal2(obj, x, W_size, layers, X_train, y_train)
-            [W, b] = obj.to_mat(x, W_size, layers);
+        function [L, g] = fun_primal2(obj, x, layers, X_train, y_train)
+            [W, b] = obj.to_mat(x, layers);
             
             [obj, L, dW, db] = obj.primal2_gradient_eval(W, b, X_train, y_train);
             
