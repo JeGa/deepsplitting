@@ -14,13 +14,18 @@ layers = [dim, 12, 12, classes];
 [h, dh] = activation_function(2);
 
 N = size(y_train, 2);
+
 loss = LeastSquares(1/N);
 %loss = NLLSoftmax();
 
+%network = ProxDescentNetwork(layers, h, dh, loss, X_train);
 network = LLCNetwork(layers, h, dh, loss, X_train);
+%network = GDNetwork(layers, h, dh, loss, X_train);
 
+%network = network.check_gradients(layers, X_train, y_train);
 %network = network.check_gradients_primal2(layers, X_train, y_train);
-network = network.train(X_train, y_train, get_params(2));
+
+network = network.train(X_train, y_train, get_params('LLC'));
 
 % NLLSoftmax.
 %[~, y] = network.fp(X_train);
@@ -38,25 +43,44 @@ plot_result_cls(X_test, y, 4);
 
 %% Helper functions.
 
-function params = get_params(ls)
-    % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
-    
-    params.linesearch = ls;
-    
-    if ls == 1
-        params.stepsize = 0.001;
-    elseif ls == 2
+function params = get_params(p)
+    if strcmp(p, 'GD')
+        % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
+        
+        %params.linesearch = 1;
+        %params.stepsize = 0.001;
+
+        params.linesearch = 2;
         params.beta = 0.5;
         params.gamma = 10^-4;
-    elseif ls == 3
-        params.gamma = 10^-4;
-        params.eta = 0.7;
-        params.beta = 4;
+
+        %params.linesearch = 3;
+        %params.gamma = 10^-4;
+        %params.eta = 0.7;
+        %params.beta = 4;
+    elseif strcmp(p, 'LLC')
+        % 1 = fixed stepsize, 2 = Armijo.
+        
+        %params.linesearch = 1;
+        %params.stepsize = 0.001;
+        
+        %params.linesearch = 2;
+        
+        % LM damping factor.
+        params.M = 0.001;
+        params.factor = 10;
+    elseif strcmp(p, 'ProxDescent')
+        % Regularizer weight multiplier.
+        params.tau = 1.5;
+        % Step quality multiplier.
+        params.sigma = 0.5;
+        % Initial regularizer weight.
+        params.mu_min = 0.3;
     else
-        error('Unsupported linesearch parameter.');
+        error('Unsupported algorithm parameter.');
     end
     
-    params.iterations = 3000;
+    params.iterations = 1000;
 end
 
 function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot)

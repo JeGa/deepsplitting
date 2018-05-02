@@ -12,7 +12,7 @@ classdef Softmax
             % g: ((d*N),(d*N)) (True Jacobian (vectorized input)).
 
             % (d*N).
-            s = softmax(y);
+            s = Softmax.softmax(y);
             s = s(:);
             
             % ((d*N),(d*N)).

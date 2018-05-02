@@ -103,8 +103,8 @@ classdef LLCNetwork < Network
             max_iter = 1;
            
             % Damping factor.
-            M = 0.001;
-            factor = 10;
+            M = params.M;
+            factor = params.factor;
            
             while 1
                 i = i + 1;

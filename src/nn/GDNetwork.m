@@ -27,7 +27,7 @@ classdef GDNetwork < Network
                 
                 if mod(i, 50) == 0
                     disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ...
-                        ' gradnorm: ', num2str(norm(obj.to_vec(dW, db))) ,' (', num2str(i), ')']);
+                        ' gradnorm: ', num2str(norm(obj.to_vec(dW, db, 2))) ,' (', num2str(i), '/', num2str(params.iterations),')']);
                 end
                 
                 [obj.W, obj.b] = obj.update_weights(stepsize, obj.W, obj.b, sW, sb);
