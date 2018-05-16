@@ -1,40 +1,42 @@
 clearvars;
 close all;
+rng(123)
 
 addpath(genpath('nn'));
 addpath(genpath('baseline'));
 
 % Classification: spirals, Regression: reg_sinus.
-[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', false);
+[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', false, 1);
 
 %%
 
 % Define network architecture.
-layers = [dim, 12, 12, classes];
-[h, dh] = activation_function(2);
+layers = [dim, 12, 12, 12, classes];
+[h, dh] = activation_function(1);
 
 N = size(y_train, 2);
 
-loss = LeastSquares(1/N);
-%loss = NLLSoftmax();
+%loss = LeastSquares(1/N);
+loss = NLLSoftmax();
 
 %network = ProxDescentNetwork(layers, h, dh, loss, X_train);
 network = LLCNetwork(layers, h, dh, loss, X_train);
 %network = GDNetwork(layers, h, dh, loss, X_train);
 
 %network = network.check_gradients(layers, X_train, y_train);
+%network = network.check_jacobian(layers, X_train, y_train);
 %network = network.check_gradients_primal2(layers, X_train, y_train);
 
 network = network.train(X_train, y_train, get_params('LLC'));
 
 % NLLSoftmax.
-%[~, y] = network.fp(X_train);
-%y = Softmax.softmax(y);
-%plot_result_cls(X_train, y, 3);
+[~, y] = network.fp(X_train);
+y = Softmax.softmax(y);
+plot_result_cls(X_train, y, 3);
 
 % LeastSquares
-[~, y] = network.fp(X_test);
-plot_result_cls(X_test, y, 4);
+%[~, y] = network.fp(X_train);
+%plot_result_cls(X_train, y, 4);
 
 %[~, y] = network.fp(X_test);
 %plot_result_reg(X_test, y, 4);
@@ -64,7 +66,9 @@ function params = get_params(p)
         %params.linesearch = 1;
         %params.stepsize = 0.001;
         
-        %params.linesearch = 2;
+        params.linesearch = 2;
+        params.beta = 0.5;
+        params.gamma = 10^-4;
         
         % LM damping factor.
         params.M = 0.001;
@@ -80,10 +84,10 @@ function params = get_params(p)
         error('Unsupported algorithm parameter.');
     end
     
-    params.iterations = 1000;
+    params.iterations = 40;
 end
 
-function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot)
+function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot, ptrain)
     addpath('datasets');
 
     if type == 1
@@ -102,7 +106,7 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_
                 data = twospirals(250, 360, 90, 1.2);
         end
     elseif type == 2
-        if data_type == 'reg_sinus'
+        if strcmp(data_type, 'reg_sinus')
             x = linspace(0, 2*pi, 30);
             y = sin(x) + 0.1 * randn(size(x));
             data = [x; y]';
@@ -126,7 +130,7 @@ function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_
     end
 
     % Divide data into training and test set.
-    n = uint64((2/3)*size(data, 1));
+    n = uint64(ptrain*size(data, 1));
 
     X_train = X(:, 1:n);
     y_train = y(1:n, :);

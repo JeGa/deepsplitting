@@ -11,7 +11,6 @@ classdef Network
     end
     
     methods
-        
         function obj = Network(layers, h, dh, loss, X_train)
             % Number of layers (including last linear layer).
             L = size(layers, 2)-1;
@@ -40,7 +39,7 @@ classdef Network
         function [obj, y] = fp(obj, X_train)
             % Returns the network output from the last layer.
             obj = obj.forwardpass(obj.W, obj.b, X_train);
-            y = obj.z{size(obj.W, 2)};
+            y = obj.z{end};
         end
         
         function [obj, L, y] = f(obj, X_train, y_train)
@@ -51,18 +50,36 @@ classdef Network
         
         function obj = check_gradients(obj, layers, X_train, y_train)
             % Checks the gradients computed by backpropagation.
-            x0 = obj.to_vec(obj.W, obj.b, 2);
+            
+            x0 = obj.to_vec(obj.W, obj.b, 1);
                        
             options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 5000, ...
-                'SpecifyObjectiveGradient', true, 'CheckGradients', true);
+                'SpecifyObjectiveGradient', true, 'CheckGradients', true, 'Display', 'iter');
             
             f = @(x) obj.fun(x, layers, X_train, y_train);
             [x, ~] = fminunc(f, x0, options);
             
-            [W_min, b_min] = obj.to_mat(x, layers, 2);
+            [W_min, b_min] = obj.to_mat(x, layers, 1);
             
-            obj.W = W_min;
-            obj.b = b_min;
+            %obj.W = W_min;
+            %obj.b = b_min;
+        end
+        
+        function obj = check_jacobian(obj, layers, X_train, y_train)
+           % Checks the jacobian of the feed forward part.
+           
+           x0 = obj.to_vec(obj.W, obj.b, 1);
+           
+           options = optimoptions(@fminunc, 'MaxFunctionEvaluations', 20000, 'MaxIterations', 5000, ...
+               'SpecifyObjectiveGradient', true, 'CheckGradients', true, 'Display', 'iter');
+           
+           f = @(x) obj.fun_jacobian(x, layers, X_train, y_train);
+           [x, ~] = fminunc(f, x0, options);
+           
+           [W_min, b_min] = obj.to_mat(x, layers, 1);
+           
+           %obj.W = W_min;
+           %obj.b = b_min;
         end
     end
     
@@ -108,22 +125,22 @@ classdef Network
             % Gradient of L(f({W_j},{b_j})) at (W, b).
             [obj, L, y] = obj.f_eval(W, b, X_train, y_train, loss);
             
-            layers = size(W, 2);
+            num_layers = size(W, 2);
             
             g_loss = loss.gradient(y, y_train);
             dL = g_loss'; % (samples,dim).
             
-            error = cell(1, layers);
-            dW = cell(1, layers);
-            db = cell(1, layers);
+            error = cell(1, num_layers);
+            dW = cell(1, num_layers);
+            db = cell(1, num_layers);
             
             % Last layer.
-            error{layers} = dL;
-            db{layers} = sum(dL, 1)';
-            dW{layers} = obj.Dw(dL, obj.a{layers-1});
+            error{num_layers} = dL;
+            db{num_layers} = sum(dL, 1)';
+            dW{num_layers} = obj.Dw(dL, obj.a{num_layers-1});
             
             % Other layers.
-            for i = layers-1:-1:2
+            for i = num_layers-1:-1:2
                 error{i} = error{i+1} * W{i+1} .* obj.dh(obj.z{i})';
                 db{i} = sum(error{i}, 1)';
                 dW{i} = obj.Dw(error{i}, obj.a{i-1});
@@ -156,34 +173,40 @@ classdef Network
             % error function. The errors are now Jacobians. The W matrices are
             % vectorized in row-major order.
             obj = obj.forwardpass(W, b, X_train);
-            y = obj.z{size(W, 2)};
+            y = obj.z{end};
             
-            layers = size(W, 2);
+            num_layers = size(W, 2);
             N = size(X_train, 2);
             
-            error = cell(1, layers);
-            dW = cell(1, layers); 
-            db = cell(1, layers);
+            error = cell(1, num_layers);
+            dW = cell(1, num_layers); 
+            db = cell(1, num_layers);
             
             % Last layer: There is no error.
-            error{layers} = eye(numel(obj.z{layers}));
-            dW{layers} = obj.dzdw(obj.a{layers-1}, size(obj.z{layers}, 1));
+            error{num_layers} = eye(numel(obj.z{num_layers}));
+            dW{num_layers} = obj.dzdw(obj.a{num_layers-1}, size(obj.z{num_layers}, 1));
             
-            ddim = size(obj.z{layers}, 1);
-            db{layers} = repmat(eye(ddim), N, 1);
+            ddim = size(obj.z{num_layers}, 1);
+            db{num_layers} = repmat(eye(ddim), N, 1);
             
             flatten = @(x) x(:);
             
             % Other layers.
-            for i = layers-1:-1:2
-                k = kron(eye(N), obj.W{i+1});
-                d = obj.dh(flatten(obj.z{i}))';
-                error{i} = error{i+1} * (k .* d);
+            for i = num_layers-1:-1:2
+                k = repmat(obj.W{i+1}, 1, N);
+                d = repmat(obj.dh(flatten(obj.z{i}))', size(obj.W{i+1}, 1), 1);
+                A = k .* d; % (c, d*N).
+                
+                [ys, xs] = size(obj.W{i+1});
+                iA = flatten(repmat(reshape(1:ys*N, ys, N), xs, 1));
+                jA = repelem(1:xs*N, ys)';
+                Ad = sparse(iA, jA, A(:));
+                error{i} = error{i+1} * Ad;
                 
                 [ddim, ~] = size(obj.W{i});
                 
                 dW{i} = error{i} * obj.dzdw(obj.a{i-1}, ddim);
-                db{i} = error{i} * repmat(eye(ddim), N, 1); % TODO: Faster?
+                db{i} = error{i} * repmat(eye(ddim), N, 1);
             end
             
             % First layer.
@@ -194,13 +217,22 @@ classdef Network
             [ddim, ~] = size(obj.W{1});
 
             dW{1} = error{1} * obj.dzdw(X_train, ddim);
-            db{1} = error{1} * repmat(eye(ddim), N, 1); % TODO: Faster?
+            db{1} = error{1} * repmat(eye(ddim), N, 1);
         end
         
         function D = dzdw(~, A, d)
-            % Returns the dz/dw matrix in row major order.
+            % A: (vdim, N), d: In R.
+            % z(vec_row_major(W)) = vec_column_major(W*A) with W*a of shape (d, N).
+            % W is row major because its easier to vectorize that way.
+            % Returns dz/dw jacobian matrix.
             [vdim, N] = size(A);
             
+            % Vector diagonal matrix.
+            % 1..1 0..0 0..0
+            % 0..0 1..1 0..0
+            % 0..0 0..0 1..1
+            % 1..1 0..0 0..0
+            % ...
             D = kron(repmat(eye(d), N, 1), ones(1, vdim));
             A = repmat(repelem(A', d, 1), 1, d);
             
@@ -208,10 +240,29 @@ classdef Network
         end
         
         function [L, g] = fun(obj, x, layers, X_train, y_train)
-            [Wc, bc] = obj.to_mat(x, layers, 2);
+            [Wc, bc] = obj.to_mat(x, layers, 1);
             
             [~, dW, db, L, ~] = obj.gradient_eval(Wc, bc, X_train, y_train, obj.loss);
-            g = obj.to_vec(dW, db, 2);
+            g = obj.to_vec(dW, db, 1);
+            
+            1; % TODO
+        end
+        
+        function [L, g] = fun_jacobian(obj, x, layers, X_train, y_train)
+            [Wc, bc] = obj.to_mat(x, layers, 1);
+            
+            % Row major order.
+            [~, dW, db, y] = obj.jacobian_eval_noloss(Wc, bc, X_train);
+                       
+            J = obj.to_jacobian(dW, db);
+            
+            gradient_loss = obj.loss.gradient(y, y_train);
+            
+            g = J'*gradient_loss(:);
+            
+            L = obj.loss.loss(y, y_train);
+            
+            1; % TODO
         end
         
         function x = to_vec(~, W, b, order)
@@ -275,5 +326,14 @@ classdef Network
             d = W_sum + b_sum;
         end
         
+        function J = to_jacobian(~, dW, db)
+            % Stacks the individual Jacobians computed by backpropagation
+            % to one big Jacobian. (Usually its possible to directly work
+            % with the individual J_W1, J_W2, ... and the stacking is not
+            % required.
+            JW = [dW{:}];
+            Jb = [db{:}];
+            J = [JW, Jb];
+        end 
     end
 end

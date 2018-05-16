@@ -3,15 +3,17 @@ classdef LLCNetwork < Network
         lambda % Lagrange multipliers for equality constraints.
         v % Network output (last layer linearities).
         rho % Weight for penalty term and dual update stepsize.
+        M % Levenberg-Marquardt damping parameter.
     end
     
     methods
-        
         function obj = LLCNetwork(layers, h, dh, loss, X_train)
             obj@Network(layers, h, dh, loss, X_train);
 
             N = size(X_train, 2);
             c = layers(end);
+            
+            rng(123);
             
             obj.lambda = ones(c, N);
             obj.v = 0.1 * randn(c, N);
@@ -22,21 +24,26 @@ classdef LLCNetwork < Network
             % params: Struct with
             %   linesearch parameters, iterations.
             
+            obj.M = params.M;
+            
             losses = zeros(params.iterations);
             
             for i = 1:params.iterations
+                %obj = obj.primal2_gradientstep(X_train, y_train, params);
                 obj = obj.primal2_levmarq(X_train, y_train, params);
                 
                 obj = obj.primal1(X_train, y_train);
                 
                 obj = obj.dual(X_train);
                 
-                [obj, loss, constraint_norm, f, ~] = obj.lagrangian(X_train, y_train);
-                disp(['Loss: ', num2str(loss), ', constraint: ', num2str(constraint_norm), ...
-                    ', lagrangian: ', num2str(f), ' (', num2str(i), '/', num2str(params.iterations), ')']);
-                losses(i) = loss;
+                obj.rho = min(1, obj.rho + 0.1);
                 
-                if mod(i, 50) == 0
+                [obj, loss, constraint_norm, f, ~, data_loss] = obj.lagrangian(X_train, y_train);                
+                disp(['Data Loss: ', num2str(data_loss), ' Loss: ', num2str(loss), ', constraint: ', num2str(constraint_norm), ...
+                    ', lagrangian: ', num2str(f), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                losses(i) = data_loss;
+                
+                if mod(i, 20) == 0
                     title('Loss');
                     plot(1:i, losses(1:i));
                     drawnow;
@@ -62,14 +69,14 @@ classdef LLCNetwork < Network
     
     methods(Access=private)
         function obj = primal1(obj, X_train, y_train)         
-            [~, y] = obj.fp(X_train);
+            [obj, y] = obj.fp(X_train);
             
             obj.v = obj.loss.primal_update(y, obj.lambda, y_train, obj.rho);
         end
         
         function obj = primal2_gradientstep(obj, X_train, y_train, params)
             i = 0;
-            max_iter = 1;
+            max_iter = 100;
             
             while 1
                 i = i + 1;
@@ -101,28 +108,36 @@ classdef LLCNetwork < Network
         function obj = primal2_levmarq(obj, X_train, y_train, params)
             i = 0;
             max_iter = 1;
-           
+            
             % Damping factor.
-            M = params.M;
             factor = params.factor;
            
-            while 1
+            while true
                 i = i + 1;
                 
-                [~, loss, ~, ~, ~] = obj.lagrangian(X_train, y_train);
+                [~, ~, ~, Lagrangian, ~] = obj.lagrangian(X_train, y_train);
                 
-                while 1
-                    [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, X_train, M);
+                % Backprop.
+                [~, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
+                J = obj.to_jacobian(dW, db);
+                
+                while true
+                    % [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, X_train, obj.M);
                     
-                    [~, loss_new, ~, ~, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
-                
-                    if loss < loss_new
-                       M = M * factor;
+                    r = obj.v(:) - obj.lambda(:)/obj.rho - y(:);
+                    s = (J'*J + obj.M * eye(size(J, 2))) \ J'*r;
+                    [sW, sb] = obj.to_mat(s, obj.layers, 1);
+                    [W_new, b_new] = obj.update_weights(1, obj.W, obj.b, sW, sb);
+                    
+                    [~, ~, ~, Lagrangian_new, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
+                    
+                    if Lagrangian < Lagrangian_new
+                       obj.M = obj.M * factor;
                     else
                        obj.W = W_new;
                        obj.b = b_new;
                        
-                       M = M / factor;
+                       obj.M = obj.M / factor;
                        break;
                     end
                 end
@@ -134,23 +149,34 @@ classdef LLCNetwork < Network
         end
         
         function [W_new, b_new] = levmarq_step(obj, W, b, X_train, M)
-            [obj, dW, db, ~] = obj.jacobian_eval_noloss(W, b, X_train);
-
-            [~, y] = obj.fp_eval(W, b, X_train);
-            r = -obj.lambda(:)/obj.rho + obj.v(:) -y(:);
-
-            L = size(dW, 2);
-            W_new = cell(1, L);
-            b_new = cell(1, L);
-
-            solve_step = @(J, r, M) (J'*J + M * eye(size(J, 2))) \ J'*r;
-
-            for j = 1:L
-                sW = solve_step(dW{j}, r, M);
-                sb = solve_step(db{j}, r, M);
-
-                W_new{j} = W{j} + reshape(sW, size(W{j}, 2), size(W{j}, 1))';
-                b_new{j} = b{j} + reshape(sb, size(b{j}));
+            [~, dW, db, y] = obj.jacobian_eval_noloss(W, b, X_train);
+            J = obj.to_jacobian(dW, db);
+            
+            % TODO: TEMP.
+            J_cm = obj.J_row_to_col_major(J);
+            
+            r = obj.v(:) - obj.lambda(:)/obj.rho - y(:);
+            
+            s = (J'*J + M * eye(size(J, 2))) \ J'*r;
+            
+            [sW, sb] = obj.to_mat(s, obj.layers, 1);
+            [W_new, b_new] = obj.update_weights(1, W, b, sW, sb);
+        end
+        
+        function [J_cm] = J_row_to_col_major(obj, J)
+            J_cm = zeros(size(J));
+            
+            rows = size(J, 1);
+            
+            for i = 1:rows
+                % Row major vector.
+                x = J(i,:);
+                
+                % Row major matrix.
+                [W, b] = obj.to_mat(x', obj.layers, 1);
+                
+                % Column major vector.
+                J_cm(i,:) = obj.to_vec(W, b, 2);
             end
         end
         
@@ -188,11 +214,11 @@ classdef LLCNetwork < Network
             obj.lambda = obj.lambda + obj.rho * (y - obj.v);
         end
         
-        function [obj, loss, constraint_norm, f, y] = lagrangian(obj, X_train, y_train)
-            [obj, loss, constraint_norm, f, y] = obj.lagrangian_eval(obj.W, obj.b, obj.lambda, obj.v, X_train, y_train);
+        function [obj, loss, constraint_norm, f, y, data_loss] = lagrangian(obj, X_train, y_train)
+            [obj, loss, constraint_norm, f, y, data_loss] = obj.lagrangian_eval(obj.W, obj.b, obj.lambda, obj.v, X_train, y_train);
         end
         
-        function [obj, loss, constraint_norm, f, y] = lagrangian_eval(obj, W, b, lambda, v, X_train, y_train)
+        function [obj, loss, constraint_norm, f, y, data_loss] = lagrangian_eval(obj, W, b, lambda, v, X_train, y_train)
             [obj, y] = obj.fp_eval(W, b, X_train);
             
             loss = obj.loss.loss(v, y_train);
@@ -204,6 +230,8 @@ classdef LLCNetwork < Network
             reg = 0; %0.5 * nu * sum(x.^2);
             
             f = loss + lambda(:)' * constraint + (obj.rho/2) * constraint_norm + reg;
+            
+            data_loss = obj.loss.loss(y, y_train);
         end
 
         function [obj, L, dW, db] = primal2_gradient_eval(obj, W, b, X_train, y_train)
@@ -224,9 +252,7 @@ classdef LLCNetwork < Network
             [obj, L, dW, db] = obj.primal2_gradient_eval(W, b, X_train, y_train);
             
             g = obj.to_vec(dW, db, 2);
-        end
-        
+        end 
     end
-    
 end
 

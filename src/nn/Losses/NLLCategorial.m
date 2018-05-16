@@ -8,6 +8,9 @@ classdef NLLCategorial
             % y_train: (cls, N).
             
             N = size(y, 2);
+            
+            % TODO
+            N = 1;
 
             L = -1/N * sum(log(y(y_train == 1)));
         end
