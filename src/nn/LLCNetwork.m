@@ -22,14 +22,13 @@ classdef LLCNetwork < Network
         
         function obj = train(obj, X_train, y_train, params)
             % params: Struct with
-            %   linesearch parameters, iterations.
+            %   linesearch parameters, LM damping factors, iterations.
             
             obj.M = params.M;
             
             losses = zeros(params.iterations);
             
             for i = 1:params.iterations
-                %obj = obj.primal2_gradientstep(X_train, y_train, params);
                 obj = obj.primal2_levmarq(X_train, y_train, params);
                 
                 obj = obj.primal1(X_train, y_train);
@@ -146,7 +145,7 @@ classdef LLCNetwork < Network
         function [W_new, b_new] = levmarq_step(obj, W, b, J, y, M)            
             r = obj.v(:) - obj.lambda(:)/obj.rho - y(:);
             
-            s = (J'*J + M * eye(size(J, 2))) \ J'*r;
+            s = (J'*J + M*eye(size(J, 2))) \ J'*r;
             
             [sW, sb] = obj.to_mat(s, obj.layers, 1);
             [W_new, b_new] = obj.update_weights(1, W, b, sW, sb);
