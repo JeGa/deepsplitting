@@ -16,27 +16,28 @@ layers = [dim, 12, 12, 12, classes];
 
 N = size(y_train, 2);
 
-%loss = LeastSquares(1/N);
-loss = NLLSoftmax();
+loss = LeastSquares(1/N);
+%loss = NLLSoftmax();
 
 %network = ProxDescentNetwork(layers, h, dh, loss, X_train);
-network = LLCNetwork(layers, h, dh, loss, X_train);
+%network = LLCNetwork(layers, h, dh, loss, X_train);
 %network = GDNetwork(layers, h, dh, loss, X_train);
+network = LMNetwork(layers, h, dh, loss, X_train);
 
 %network = network.check_gradients(layers, X_train, y_train);
 %network = network.check_jacobian(layers, X_train, y_train);
 %network = network.check_gradients_primal2(layers, X_train, y_train);
 
-network = network.train(X_train, y_train, get_params('LLC'));
+network = network.train(X_train, y_train, get_params('LM'));
 
 % NLLSoftmax.
-[~, y] = network.fp(X_train);
-y = Softmax.softmax(y);
-plot_result_cls(X_train, y, 3);
+%[~, y] = network.fp(X_train);
+%y = Softmax.softmax(y);
+%plot_result_cls(X_train, y, 3);
 
 % LeastSquares
-%[~, y] = network.fp(X_train);
-%plot_result_cls(X_train, y, 4);
+[~, y] = network.fp(X_train);
+plot_result_cls(X_train, y, 4);
 
 %[~, y] = network.fp(X_test);
 %plot_result_reg(X_test, y, 4);
@@ -80,6 +81,10 @@ function params = get_params(p)
         params.sigma = 0.5;
         % Initial regularizer weight.
         params.mu_min = 0.3;
+    elseif strcmp(p, 'LM')
+        % LM Damping factor.
+        params.M = 0.001;
+        params.factor = 10;
     else
         error('Unsupported algorithm parameter.');
     end
