@@ -122,12 +122,7 @@ classdef LLCNetwork < Network
                 J = obj.to_jacobian(dW, db);
                 
                 while true
-                    % [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, X_train, obj.M);
-                    
-                    r = obj.v(:) - obj.lambda(:)/obj.rho - y(:);
-                    s = (J'*J + obj.M * eye(size(J, 2))) \ J'*r;
-                    [sW, sb] = obj.to_mat(s, obj.layers, 1);
-                    [W_new, b_new] = obj.update_weights(1, obj.W, obj.b, sW, sb);
+                    [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, J, y, obj.M);
                     
                     [~, ~, ~, Lagrangian_new, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
                     
@@ -148,13 +143,7 @@ classdef LLCNetwork < Network
             end
         end
         
-        function [W_new, b_new] = levmarq_step(obj, W, b, X_train, M)
-            [~, dW, db, y] = obj.jacobian_eval_noloss(W, b, X_train);
-            J = obj.to_jacobian(dW, db);
-            
-            % TODO: TEMP.
-            J_cm = obj.J_row_to_col_major(J);
-            
+        function [W_new, b_new] = levmarq_step(obj, W, b, J, y, M)            
             r = obj.v(:) - obj.lambda(:)/obj.rho - y(:);
             
             s = (J'*J + M * eye(size(J, 2))) \ J'*r;
@@ -164,6 +153,7 @@ classdef LLCNetwork < Network
         end
         
         function [J_cm] = J_row_to_col_major(obj, J)
+            % For debugging.
             J_cm = zeros(size(J));
             
             rows = size(J, 1);
