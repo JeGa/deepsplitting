@@ -1,11 +1,9 @@
 classdef LeastSquares
-    
     properties(Access=public)
         C
     end
     
     methods
-        
         function obj = LeastSquares(C)
             obj.C = C;
         end
@@ -27,7 +25,14 @@ classdef LeastSquares
             z = (obj.C * y_train + rho * y + lambda) / (obj.C + rho);
         end
         
+        function d = minimize_linearized_penalty(obj, J, y, y_train, mu)
+            % Minimizes the function loss(y + Jd) + 0.5*mu*norm(d)^2.
+            N = 1/obj.C;
+            
+            vec = @(x) x(:);
+            
+            d = (mu*N*eye(size(J, 2)) + J'*J)^(-1)*J'*vec(y_train - y);
+        end
     end
-    
 end
 

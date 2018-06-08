@@ -30,7 +30,19 @@ with some appropriate error measure $L(y_p;y)$ and model parametrization $\{W_j\
 
 \section{Solution concept}
 
-In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously. Additionally, without loss of generality we consider a 2-layer neural network mapping $f(\{W_j\};x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
+In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously.
+
+\begin{itemize}
+	\setlength\itemsep{0em}
+	\item Last layer decoupling with ADMM.
+	\item ProxDescent.
+	\item Levenberg-Marquard with least square loss.
+	\item (ProxProp).
+\end{itemize}
+
+\subsection{Idea 1: Per-layer decoupling}
+
+In the following, without loss of generality we consider a 2-layer neural network mapping $f(\{W_j\};x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
 
 \begin{equation}
 	\begin{aligned}
@@ -40,12 +52,7 @@ In the following, we stack all input samples into the matrix $x$ where each colu
 	\label{eq:loss_function}
 \end{equation}
 
-To split the nested objective function we decouple the weights and activation functions
-by introducing additional variables and adding the appropriate constraints. In the following are different variants of decoupling the loss function. Note that we omit the constant $y$ in the following equations for the sake of simplicity.
-
-\subsection{Idea 1: Per-layer decoupling}
-
-By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
+To split the nested objective function we decouple the weights and activation functions by introducing additional variables and adding the appropriate constraints. Note that we omit the constant $y$ in the following equations for the sake of simplicity. By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
 
 \begin{equation}
 	\begin{aligned}
@@ -142,6 +149,34 @@ The gradients of the two primal problems can be written as
 		\nabla_{W_j} \mathcal{L} &= \rho J_f(\{W_j\})^T (f(\{W_j\}) - z^k + (1/\rho) \lambda^k).
 	\end{aligned}
 \end{equation}
+
+\subsection{Idea 3: Levenberg-Marquardt (when L is least squares)}
+
+In the special case when $L(y_p;y) = \frac{1}{2} \|y_p - y\|^2$ we get
+
+\begin{equation}
+	E(\{W_j\}) = \frac{1}{2N} \|f(\{W_j\};X) - Y\|^2
+\end{equation}
+
+where $X$ and $Y$ are the vectorized training data. The Levenberg-Marquardt algorithm can be used to solve this non-linear least squares problem. Here, $f$ is linearly approximated by $f(\{W_j\}+\delta;X) \approx f(\{W_j\};X) + J_f\delta$ where $J_f$ is the Jacobian at $\{W_j\}$. In each iteration the linearized problem is solved for $\delta$.
+
+\begin{equation}
+	E(\{W_j\}+\delta) \approx \frac{1}{2N} \|f(\{W_j\};X) + J_f\delta - Y\|^2
+\end{equation}
+
+The normal equations yield
+
+\begin{equation}
+	(J_f^TJ_f) \delta = J_f^T(Y - f(\{W_j\};X)).
+\end{equation}
+
+By adding a damping term to the left-hand side we get the Levenberg-Marquardt algorithm.
+
+\begin{equation}
+	(J_f^TJ_f + \lambda I) \delta = J_f^T(Y - f(\{W_j\};X)).
+\end{equation}
+
+The parameters are update in each step $\{W_j\}^{(t+1)} = \{W_j\}^t + \delta$.
 
 \section{Appendix}
 

@@ -239,13 +239,18 @@ classdef Network
             D = D .* A;
         end
         
+        function [obj, J, y] = jacobian_noloss_matrix(obj, X_train)
+            % Jc(x) (Jacobian with row-major vectorization) and c(x).
+            [obj, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
+            
+            J = obj.to_jacobian(dW, db);
+        end
+        
         function [L, g] = fun(obj, x, layers, X_train, y_train)
             [Wc, bc] = obj.to_mat(x, layers, 1);
             
             [~, dW, db, L, ~] = obj.gradient_eval(Wc, bc, X_train, y_train, obj.loss);
             g = obj.to_vec(dW, db, 1);
-            
-            1; % TODO
         end
         
         function [L, g] = fun_jacobian(obj, x, layers, X_train, y_train)
@@ -261,8 +266,6 @@ classdef Network
             g = J'*gradient_loss(:);
             
             L = obj.loss.loss(y, y_train);
-            
-            1; % TODO
         end
         
         function x = to_vec(~, W, b, order)

@@ -116,9 +116,7 @@ classdef LLCNetwork < Network
                 
                 [~, ~, ~, Lagrangian, ~] = obj.lagrangian(X_train, y_train);
                 
-                % Backprop.
-                [~, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
-                J = obj.to_jacobian(dW, db);
+                [~, J, y] = obj.jacobian_noloss_matrix(X_train);
                 
                 while true
                     [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, J, y, obj.M);

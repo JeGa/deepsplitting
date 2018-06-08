@@ -2,10 +2,6 @@ classdef ProxDescentNetwork < Network
     methods
         function obj = ProxDescentNetwork(layers, h, dh, loss, X_train)
             obj@Network(layers, h, dh, loss, X_train);
-            
-            if ~isa(loss, 'LeastSquares')
-                error('Currently only works with least squares error.');
-            end
         end
         
         function obj = train(obj, X_train, y_train, params)
@@ -19,7 +15,7 @@ classdef ProxDescentNetwork < Network
                 
                 while true
                     % Compute step (minimum of linearization).
-                    [obj, d] = obj.minimize_ls_penalty(y_train, mu, J, y);
+                    d = obj.loss.minimize_linearized_penalty(J, y, y_train, mu);
                     
                     % Check regularizer weight.
                     [~, L_current, ~] = obj.f(X_train, y_train);
@@ -50,25 +46,7 @@ classdef ProxDescentNetwork < Network
         end
     end
     
-    methods(Access=private)
-        function [obj, d] = minimize_ls_penalty(obj, y_train, mu, J, y)
-            N = 1/obj.loss.C;
-            
-            vec = @(x) x(:);
-            
-            d = (mu*N*eye(size(J, 2)) + J'*J)^(-1)*J'*vec(y_train - y);
-        end
-        
-        function [obj, J, y] = jacobian_noloss_matrix(obj, X_train)
-            % Jc(x) (Jacobian with row-major vectorization) and c(x).
-            [obj, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
-            
-            % Build Jacobian.
-            JW = [dW{:}];
-            Jb = [db{:}];
-            J = [JW, Jb];
-        end
-        
+    methods(Access=private)        
         function [obj, L] = loss_linearized(obj, y_train, J, y, d, mu)
             % h(c(x) + grad(c(x))*d) + 0.5 * mu * norm(d)^2.
             % d: Vectorized weight and biases with

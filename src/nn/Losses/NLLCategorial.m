@@ -12,7 +12,7 @@ classdef NLLCategorial
             % TODO
             N = 1;
 
-            L = -1/N * sum(log(y(y_train == 1)));
+            L = -(1/N) * sum(log(y(y_train == 1)));
         end
         
         function g = gradient(y, y_train)
@@ -23,7 +23,7 @@ classdef NLLCategorial
             [cls, N] = size(y);
             
             g = zeros(cls, N);
-            g(y_train == 1) = -(1/N) * 1./y(y_train==1);
+            g(y_train == 1) = -(1/N) * 1./y(y_train == 1);
             g = g(:)';
         end
         

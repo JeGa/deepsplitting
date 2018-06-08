@@ -12,23 +12,27 @@ addpath(genpath('baseline'));
 
 % Define network architecture.
 layers = [dim, 12, 12, 12, classes];
-[h, dh] = activation_function(1);
+[h, dh] = activation_function(2);
 
 N = size(y_train, 2);
 
-loss = LeastSquares(1/N);
-%loss = NLLSoftmax();
+% loss = LeastSquares(1);
+loss = NLLSoftmax(); % TODO: N scaling factor...
 
+% TODO: Bad with 1/N scaling and LS loss.
+
+network = ProxPropNetwork(layers, h, dh, loss, X_train);
 %network = ProxDescentNetwork(layers, h, dh, loss, X_train);
 %network = LLCNetwork(layers, h, dh, loss, X_train);
 %network = GDNetwork(layers, h, dh, loss, X_train);
-network = LMNetwork(layers, h, dh, loss, X_train);
+%network = LMNetwork(layers, h, dh, loss, X_train);
 
+% Checking stuff.
 %network = network.check_gradients(layers, X_train, y_train);
 %network = network.check_jacobian(layers, X_train, y_train);
 %network = network.check_gradients_primal2(layers, X_train, y_train);
 
-network = network.train(X_train, y_train, get_params('LM'));
+network = network.train(X_train, y_train, get_params('ProxProp'));
 
 % NLLSoftmax.
 %[~, y] = network.fp(X_train);
@@ -85,11 +89,14 @@ function params = get_params(p)
         % LM Damping factor.
         params.M = 0.001;
         params.factor = 10;
+    elseif strcmp(p, 'ProxProp')
+        params.tau = 1.2;
+        params.tau_theta = 5;
     else
         error('Unsupported algorithm parameter.');
     end
     
-    params.iterations = 40;
+    params.iterations = 3000;
 end
 
 function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot, ptrain)
