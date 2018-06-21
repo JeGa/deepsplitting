@@ -26,6 +26,8 @@ classdef Network
             obj.dh = dh;
             obj.loss = loss;
             
+            rng(123);
+            
             % Initialize network weights.
             for l=1:L
                 obj.W{l} = 0.1 * randn(layers(l+1), layers(l));
@@ -81,10 +83,20 @@ classdef Network
            %obj.W = W_min;
            %obj.b = b_min;
         end
+        
+        function obj = set_params(obj, W, b)
+            obj.W = W;
+            obj.b = b;
+        end
+        
+        function [W, b] = get_params(obj)
+           W = obj.W;
+           b = obj.b;
+        end
     end
     
     methods(Abstract=true)
-        obj = train(obj, X_train, y_train, params);
+        [obj, losses] = train(obj, X_train, y_train, params);
     end
     
     methods(Access=protected)
@@ -337,6 +349,6 @@ classdef Network
             JW = [dW{:}];
             Jb = [db{:}];
             J = [JW, Jb];
-        end 
+        end
     end
 end

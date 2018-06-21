@@ -4,11 +4,16 @@ classdef ProxDescentNetwork < Network
             obj@Network(layers, h, dh, loss, X_train);
         end
         
-        function obj = train(obj, X_train, y_train, params)
+        function [obj, losses] = train(obj, X_train, y_train, params)
             % params: Struct with
             %   iterations, tau, sigma, mu_min.
             
             mu = params.mu_min;
+            
+            losses = zeros(1, params.iterations);
+            
+            [~, L_start, ~] = obj.f(X_train, y_train);
+            start_loss = L_start;
             
             for i = 1:params.iterations
                 [obj, J, y] = obj.jacobian_noloss_matrix(X_train);
@@ -42,7 +47,11 @@ classdef ProxDescentNetwork < Network
                 obj.b = b_new;
                 
                 disp(['Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                
+                losses(i) = L_new;
             end
+            
+            losses = [start_loss,losses(1:end-1)];
         end
     end
     

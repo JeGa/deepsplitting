@@ -8,12 +8,17 @@ classdef LMNetwork < Network
             end
         end
         
-        function obj = train(obj, X_train, y_train, params)
+        function [obj, losses] = train(obj, X_train, y_train, params)
             % params: Struct with
             % Damping parameter, iterations.
             
             M = params.M;
             factor = params.factor;
+            
+            losses = zeros(1, params.iterations);
+            
+            [~, L_start, ~] = obj.f(X_train, y_train);
+            start_loss = L_start;
             
             for i = 1:params.iterations
                 [~, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
@@ -37,7 +42,11 @@ classdef LMNetwork < Network
                 end
                 
                 disp(['Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                
+                losses(i) = L_new;
             end
+            
+            losses = [start_loss,losses(1:end-1)];
         end
     end
     

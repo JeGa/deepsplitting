@@ -4,9 +4,11 @@ classdef GDNetwork < Network
            obj@Network(layers, h, dh, loss, X_train);
         end
         
-        function obj = train(obj, X_train, y_train, params)
+        function [obj, losses] = train(obj, X_train, y_train, params)
             % params: Struct with
             %   linesearch parameters, iterations.
+            
+            losses = zeros(1, params.iterations);
             
             for i = 1:params.iterations
                 [obj, dW, db, L, ~] = obj.gradient(X_train, y_train);
@@ -31,10 +33,14 @@ classdef GDNetwork < Network
                 end
                 
                 [obj.W, obj.b] = obj.update_weights(stepsize, obj.W, obj.b, sW, sb);
+                
+                losses(i) = L;
             end
             
             [obj, L, ~] = obj.f(X_train, y_train);
             disp(['Loss: ', num2str(L)]);
+            
+            %losses = [losses(2:end),L];
         end
     end
     

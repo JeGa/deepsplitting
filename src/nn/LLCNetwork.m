@@ -13,20 +13,26 @@ classdef LLCNetwork < Network
             N = size(X_train, 2);
             c = layers(end);
             
-            rng(123);
+            rng(123)
             
             obj.lambda = ones(c, N);
             obj.v = 0.1 * randn(c, N);
             obj.rho = 1;
         end
         
-        function obj = train(obj, X_train, y_train, params)
+        function [obj, losses] = train(obj, X_train, y_train, params)
             % params: Struct with
             %   linesearch parameters, LM damping factors, iterations.
             
             obj.M = params.M;
             
-            losses = zeros(params.iterations);
+            losses = zeros(1, params.iterations);
+            
+            [~, loss, constraint_norm, f, ~, data_loss] = obj.lagrangian(X_train, y_train);
+            start_loss = data_loss;
+            
+            disp(['INIT: Data Loss: ', num2str(data_loss), ' Loss: ', num2str(loss), ', constraint: ', num2str(constraint_norm), ...
+                    ', lagrangian: ', num2str(f), ' (', num2str(0), '/', num2str(params.iterations), ')']);
             
             for i = 1:params.iterations
                 obj = obj.primal2_levmarq(X_train, y_train, params);
@@ -37,17 +43,13 @@ classdef LLCNetwork < Network
                 
                 obj.rho = min(1, obj.rho + 0.1);
                 
-                [obj, loss, constraint_norm, f, ~, data_loss] = obj.lagrangian(X_train, y_train);                
+                [obj, loss, constraint_norm, f, ~, data_loss] = obj.lagrangian(X_train, y_train);
                 disp(['Data Loss: ', num2str(data_loss), ' Loss: ', num2str(loss), ', constraint: ', num2str(constraint_norm), ...
                     ', lagrangian: ', num2str(f), ' (', num2str(i), '/', num2str(params.iterations), ')']);
                 losses(i) = data_loss;
-                
-                if mod(i, 20) == 0
-                    title('Loss');
-                    plot(1:i, losses(1:i));
-                    drawnow;
-                end
             end
+            
+            losses = [start_loss,losses(1:end-1)];
         end
         
         function obj = check_gradients_primal2(obj, layers, X_train, y_train)
@@ -121,7 +123,7 @@ classdef LLCNetwork < Network
                 while true
                     [W_new, b_new] = obj.levmarq_step(obj.W, obj.b, J, y, obj.M);
                     
-                    [~, ~, ~, Lagrangian_new, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
+                    [~, ~, ~, Lagrangian_new, ~, ~] = obj.lagrangian_eval(W_new, b_new, obj.lambda, obj.v, X_train, y_train);
                     
                     if Lagrangian < Lagrangian_new
                        obj.M = obj.M * factor;

@@ -6,227 +6,133 @@ addpath(genpath('nn'));
 addpath(genpath('baseline'));
 
 % Classification: spirals, Regression: reg_sinus.
-[X_train, y_train, X_test, y_test, dim, classes] = get_data(1, 'spirals', false, 1);
+[X_train, y_train, X_test, y_test, dim, classes] = helper.get_data(1, 'spirals', false, 1);
 
 %%
 
+activation_type = 2; % 1 = sigmoid, 2 = relu.
+loss_type = 2; % 1 = LS, 2 = NLLsm.
+
 % Define network architecture.
 layers = [dim, 12, 12, 12, classes];
-[h, dh] = activation_function(2);
+[h, dh] = helper.activation_function(activation_type);
 
 N = size(y_train, 2);
 
-% loss = LeastSquares(1);
-loss = NLLSoftmax(); % TODO: N scaling factor...
+loss = get_loss(loss_type);
 
-% TODO: Bad with 1/N scaling and LS loss.
+networks = {
+    GDNetwork(layers, h, dh, loss, X_train), 'GD';
+    LLCNetwork(layers, h, dh, loss, X_train), 'LLC';
+    ProxDescentNetwork(layers, h, dh, loss, X_train), 'ProxDescent';
+    ProxPropNetwork(layers, h, dh, loss, X_train), 'ProxProp'; % TODO: Armijo.
+};
 
-network = ProxPropNetwork(layers, h, dh, loss, X_train);
-%network = ProxDescentNetwork(layers, h, dh, loss, X_train);
-%network = LLCNetwork(layers, h, dh, loss, X_train);
-%network = GDNetwork(layers, h, dh, loss, X_train);
-%network = LMNetwork(layers, h, dh, loss, X_train);
+if loss_type == 1
+   networks(end,:) = {LMNetwork(layers, h, dh, loss, X_train), 'LM'};
+end
 
-% Checking stuff.
-%network = network.check_gradients(layers, X_train, y_train);
-%network = network.check_jacobian(layers, X_train, y_train);
-%network = network.check_gradients_primal2(layers, X_train, y_train);
+train(networks{4,1}, X_train, y_train, networks{4,2}, loss_type, activation_type);
+%train_all(networks, X_train, y_train, loss_type, activation_type);
 
-network = network.train(X_train, y_train, get_params('ProxProp'));
-
-% NLLSoftmax.
-%[~, y] = network.fp(X_train);
-%y = Softmax.softmax(y);
-%plot_result_cls(X_train, y, 3);
-
-% LeastSquares
-[~, y] = network.fp(X_train);
-plot_result_cls(X_train, y, 4);
-
-%[~, y] = network.fp(X_test);
-%plot_result_reg(X_test, y, 4);
+results = load_results(networks);
 
 %plot_grid(network);
 
-%% Helper functions.
-
-function params = get_params(p)
-    if strcmp(p, 'GD')
-        % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
-        
-        %params.linesearch = 1;
-        %params.stepsize = 0.001;
-
-        params.linesearch = 2;
-        params.beta = 0.5;
-        params.gamma = 10^-4;
-
-        %params.linesearch = 3;
-        %params.gamma = 10^-4;
-        %params.eta = 0.7;
-        %params.beta = 4;
-    elseif strcmp(p, 'LLC')
-        % 1 = fixed stepsize, 2 = Armijo.
-        
-        %params.linesearch = 1;
-        %params.stepsize = 0.001;
-        
-        params.linesearch = 2;
-        params.beta = 0.5;
-        params.gamma = 10^-4;
-        
-        % LM damping factor.
-        params.M = 0.001;
-        params.factor = 10;
-    elseif strcmp(p, 'ProxDescent')
-        % Regularizer weight multiplier.
-        params.tau = 1.5;
-        % Step quality multiplier.
-        params.sigma = 0.5;
-        % Initial regularizer weight.
-        params.mu_min = 0.3;
-    elseif strcmp(p, 'LM')
-        % LM Damping factor.
-        params.M = 0.001;
-        params.factor = 10;
-    elseif strcmp(p, 'ProxProp')
-        params.tau = 1.2;
-        params.tau_theta = 5;
-    else
-        error('Unsupported algorithm parameter.');
-    end
+function train_all(networks, X_train, y_train, loss_type, activation_type)
+    types = {networks{:,2}};
     
-    params.iterations = 3000;
+    n1 = networks{1,1};
+    [W, b] = n1.get_params();
+    
+    for i = 1:size(types, 2)
+        ni = networks{i,1};
+        networks{i,1} = ni.set_params(W, b);
+        train(networks{i,1}, X_train, y_train, networks{i,2}, loss_type, activation_type);
+    end
 end
 
-function [X_train, y_train, X_test, y_test, dim, classes] = get_data(type, data_type, do_plot, ptrain)
-    addpath('datasets');
+function results = load_results(networks)
+    types = {networks{:,2}};
 
+    folder = 'results/';
+
+    results = cell(1, size(types, 2));
+
+    figure;
+    title('Spiral data set.');
+    xlabel('Iteration');
+    ylabel('Objective');
+    
+    for i = 1:size(types, 2)
+        res = load(join([folder, 'losses_', types{i}, '.mat']));
+        results{i} = res.losses;
+        
+        loss_type = getLossFromType(res.loss_type);
+        activation_type = getActivationFromType(res.activation_type);
+        
+        hold on
+        plot(res.losses, 'DisplayName', ...
+            join([types{i}, '(', num2str(res.time), 's, ', loss_type, ', ', activation_type, ')']));
+    end
+    
+    hold off
+    legend
+end
+
+function [losses, misclassified] = train(network, X_train, y_train, type, loss_type, activation_type)
+    folder = 'results/';
+    
+    tic;
+    [network, losses] = network.train(X_train, y_train, helper.get_params(type));
+    time = toc;
+    
+    if loss_type == 1
+        y = helper.predict_ls(network, X_train);
+    elseif loss_type == 2
+        y = helper.predict_nllsm(network, X_train);
+    else
+       error('Unknown loss type.')
+    end
+    
+    misclassified = helper.results_cls(y, y_train);
+
+    save(join([folder, 'losses_', type, '.mat']), 'losses', 'misclassified', 'time', 'loss_type', 'activation_type');
+end
+
+function loss = get_loss(type)
     if type == 1
-        switch data_type
-            case 'corners'
-                data = corners();
-            case 'outlier'
-                data = outlier();
-            case 'halfkernel'
-                data = halfkernel();
-            case 'moon'
-                data = crescentfullmoon();
-            case 'clusters'
-                data = clusterincluster();
-            case 'spirals'
-                data = twospirals(250, 360, 90, 1.2);
-        end
+        loss = LeastSquares(1);
+        % TODO: N scaling factor... % TODO: Bad with 1/N scaling and LS loss.
     elseif type == 2
-        if strcmp(data_type, 'reg_sinus')
-            x = linspace(0, 2*pi, 30);
-            y = sin(x) + 0.1 * randn(size(x));
-            data = [x; y]';
-        end
+        loss = NLLSoftmax();
     else
-       error('Unsupported type.'); 
+        error('Unknown loss type.')
     end
+end
 
-    dim = size(data, 2)-1;
-
-    % Shuffle data.
-    shuffle = randsample(1:size(data, 1), size(data, 1));
-    X = data(shuffle, 1:dim)';
-    
-    if type == 2
-        % Regression.
-        y = data(shuffle, dim+1);
+function t = getLossFromType(loss_type)
+    if loss_type == 1
+        t = 'Least Squares';
+    elseif loss_type == 2
+        t = 'NLL';
     else
-        % Classification.
-        y = data(shuffle, dim+1)+1;
+        warning('Unsupported loss type.');
     end
+end
 
-    % Divide data into training and test set.
-    n = uint64(ptrain*size(data, 1));
-
-    X_train = X(:, 1:n);
-    y_train = y(1:n, :);
-    X_test = X(:, n+1:end);
-    y_test = y(n+1:end, :);
-    
-    if type == 2
-        classes = 1;
-        y_train = y_train';
-        y_test = y_test';
+function t = getActivationFromType(activation_type)
+    if activation_type == 1
+        t = 'sigmoid';
+    elseif activation_type == 2
+        t = 'relu';
     else
-        % Classification
-        y_train = one_hot(y_train);
-        y_test = one_hot(y_test);
-        classes = max(y);
-    end
-    
-    if do_plot
-        if dim == 2
-            figure(1);
-            scatter(data(:,1), data(:,2), 10, data(:,3));
-            axis equal;
-            title('Ground truth');
-            drawnow
-        elseif dim == 1
-            figure(1);
-            scatter(data(:,1), data(:,2));
-            title('Ground truth');
-            drawnow 
-        end
+        warning('Unsupported activation type');
     end
 end
 
-function [h, dh] = activation_function(type)
-    if type == 1
-        h = @(t) 1 ./ (1 + exp(-t));
-        dh = @(t) h(t) .* (1 - h(t));
-    elseif type == 2
-        h = @(t) max(0, t);
-        dh = @(t) 1 * (t>0);
-    end
-end
-
-function plot_result_cls(X_train, y, f)
-    [~,C] = max(y, [], 1);
-    C = C - 1;
-
-    % y is of shape (cls, samples).
-    figure(f);
-    scatter(X_train(1,:), X_train(2,:), 10, C);
-    axis equal;
-    drawnow
-end
-
-function plot_result_reg(X_train, y, f)
-    figure(f);
-    scatter(X_train, y);
-    drawnow
-end
-
-function x_onehot = one_hot(x)
-    % x: (N,1).
-    classes = max(x);
-
-    x_onehot = zeros(classes, size(x,1));
-    ind = sub2ind(size(x_onehot), x', 1:size(x',2));
-    x_onehot(ind) = 1;
-end
-
-function plot_grid(network)
-    [X, Y] = meshgrid(-10:0.1:10, -10:0.1:10);
-    X_input = [X(:), Y(:)]';
-    
-    [~, y] = network.fp(X_input);
-    y = Softmax.softmax(y);
-    
-    xsize = size(X,2);
-    ysize = size(X,1);
-    
-    [~,C] = max(y, [], 1);
-    C = C - 1;
-    y = reshape(C, ysize, xsize);
-    
-    figure(5);
-    axis equal;
-    image(y', 'CDataMapping', 'scaled')
+function check_gradient()
+    %network = network.check_gradients(layers, X_train, y_train);
+    %network = network.check_jacobian(layers, X_train, y_train);
+    %network = network.check_gradients_primal2(layers, X_train, y_train);
 end

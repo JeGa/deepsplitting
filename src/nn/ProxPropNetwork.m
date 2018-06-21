@@ -4,17 +4,27 @@ classdef ProxPropNetwork < Network
             obj@Network(layers, h, dh, loss, X_train);
         end
         
-        function obj = train(obj, X_train, y_train, params)
+        function [obj, losses] = train(obj, X_train, y_train, params)
             % params: Struct with
-            %   iterations, tau (proximal operator factor).
+            %   iterations, tau, tau_theta (proximal operator factor).
+            
+            losses = zeros(1, params.iterations);
             
             for i = 1:params.iterations
                 % y is before parameter update.
                 [obj, y] = obj.proxprop_step(params.tau, params.tau_theta, X_train, y_train);
                 
+                data_loss = obj.loss.loss(y, y_train);
                 
-                disp(['Loss = ', num2str(obj.loss.loss(y, y_train)), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                disp(['Loss = ', num2str(data_loss), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                
+                losses(i) = data_loss;
             end
+            
+            [obj, L, ~] = obj.f(X_train, y_train);
+            disp(['Loss: ', num2str(L)]);
+            
+            %losses = [losses(2:end),L];
         end
     end
     
