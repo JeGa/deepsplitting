@@ -30,7 +30,7 @@ class Optimizer(BaseOptimizer):
 
     def _check_armijo(self, sigma, params, grads, step_direction, eval):
         current_loss = eval()
-        current_params = [p.clone() for p in self.net.parameters()]
+        current_params = self.save_params()
 
         for p, s in zip(params, step_direction):
             p.data.add_(sigma, s)
@@ -42,7 +42,6 @@ class Optimizer(BaseOptimizer):
         if new_loss - current_loss <= sigma * self.hyperparams.gamma * slope:
             return True
 
-        with torch.no_grad():
-            for old_p, new_p in zip(current_params, self.net.parameters()):
-                new_p.copy_(old_p)
+        self.restore_params(current_params)
+
         return False
