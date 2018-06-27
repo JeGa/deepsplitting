@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 
-class SimpleNet(nn.Module):
+class SimpleConvNet(nn.Module):
     """
     From pytorch tutorial.
 
@@ -9,8 +9,10 @@ class SimpleNet(nn.Module):
     Output: 10 classes.
     """
 
-    def __init__(self, h):
-        super(SimpleNet, self).__init__()
+    def __init__(self, h, criterion):
+        super(SimpleConvNet, self).__init__()
+
+        self.output_dim = 10
 
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.conv2 = nn.Conv2d(6, 16, 5)
@@ -18,9 +20,10 @@ class SimpleNet(nn.Module):
 
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.fc3 = nn.Linear(84, self.output_dim)
 
         self.h = h
+        self.criterion = criterion
 
     def forward(self, x):
         x = self.pool(self.h(self.conv1(x)))
@@ -33,3 +36,28 @@ class SimpleNet(nn.Module):
         x = self.fc3(x)
 
         return x
+
+    def loss(self, inputs, labels):
+        return self.criterion(self(inputs), labels)
+
+
+class SimpleNet(nn.Module):
+    def __init__(self, h, criterion):
+        super(SimpleNet, self).__init__()
+
+        self.output_dim = 10
+
+        self.fc1 = nn.Linear(784, 10)
+        self.fc2 = nn.Linear(10, self.output_dim)
+
+        self.h = h
+        self.criterion = criterion
+
+    def forward(self, x):
+        x = self.h(self.fc1(x))
+        x = self.fc2(x)
+
+        return x
+
+    def loss(self, inputs, labels):
+        return self.criterion(self(inputs), labels)

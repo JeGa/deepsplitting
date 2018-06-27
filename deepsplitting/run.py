@@ -1,72 +1,51 @@
 import matplotlib.pyplot as plt
-
-import torch
+import logging
 import torch.nn as nn
 import torch.nn.functional as F
 
 import deepsplitting.data
 import deepsplitting.networks.simple
-import deepsplitting.util
-import deepsplitting.optimizer.GradientDescentArmijo as GD
+import deepsplitting.utils.misc
+import deepsplitting.optimizer.llc as LLC
+import deepsplitting.optimizer.gradient_descent_armijo as GDA
+import deepsplitting.optimizer.gradient_descent as GD
+
+from deepsplitting.utils.trainrun import train
+from deepsplitting.utils.testrun import test_softmax, test_scores
 
 
-def test(net, testloader):
-    result = []
+def data_loader(loss_type):
+    if loss_type == 'ls':
+        def target_transform(target):
+            return deepsplitting.utils.misc.one_hot(target, 10).squeeze()
 
-    with torch.no_grad():
-        for data in testloader:
-            images, labels = data
+        tf = target_transform
+    else:
+        tf = None
 
-            outputs = net(images)
-
-            _, predicted = torch.max(outputs.data, 1)
-
-            result.append(labels == predicted)
-
-    print("{} of {} correctly classified.".format(sum([r.sum().item() for r in result]), sum([len(r) for r in result])))
-
-
-def train(net, trainloader, optimizer, criterion, epochs):
-    losses = list()
-
-    for epoch in range(epochs):
-        for i, data in enumerate(trainloader, 0):
-            inputs, labels = data
-
-            net.zero_grad()
-
-            outputs = net(inputs)
-
-            loss = criterion(outputs, labels)
-
-            loss.backward()
-
-            optimizer.step(lambda: criterion(net(inputs), labels))
-
-            losses.append(loss.item())
-
-        if epoch % 10 == 9:
-            print('[%d/%d] loss: %.3f' % (epoch + 1, epochs, loss.item()))
-
-    return losses
+    return deepsplitting.data.load_MNIST_vectorized(16, 8, ttransform=tf)
 
 
 def main():
-    trainloader, testloader, classes = deepsplitting.data.load_data(16, 8)
+    logging.basicConfig(level=logging.INFO)
 
-    deepsplitting.util.show(trainloader)
+    trainloader, testloader, training_batch_size, _ = data_loader('ls')
 
-    net = deepsplitting.networks.simple.SimpleNet(F.relu)
+    deepsplitting.utils.misc.show(trainloader)
 
-    optimizer = GD.Optimizer(net)
+    net = deepsplitting.networks.simple.SimpleNet(F.relu, nn.MSELoss())  # nn.CrossEntropyLoss())
 
-    losses = train(net, trainloader, optimizer, nn.CrossEntropyLoss(), 150)
+    optimizer = {'LLC': LLC.Optimizer(net, N=training_batch_size),
+                 'GDA': GDA.Optimizer(net),
+                 'GD': GD.Optimizer(net)}
+
+    losses = train(net, trainloader, optimizer['LLC'], 20)
 
     plt.figure()
     plt.plot(losses)
     plt.show()
 
-    test(net, trainloader)
+    test_scores(net, trainloader)
 
 
 if __name__ == '__main__':
