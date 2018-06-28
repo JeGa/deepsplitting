@@ -23,7 +23,7 @@ def run(net, testloader, eval_results):
     logging.info("{} of {} correctly classified.".format(correct, samples))
 
 
-def test_softmax(net, testloader):
+def test_nll(net, testloader):
     def evaluate(outputs, labels):
         sm = torch.nn.Softmax(1)
         _, predicted = torch.max(sm(outputs.data), 1)
@@ -33,7 +33,7 @@ def test_softmax(net, testloader):
     run(net, testloader, evaluate)
 
 
-def test_scores(net, testloader):
+def test_ls(net, testloader):
     def evaluate(outputs, labels):
         _, predicted = torch.max(outputs.data, 1)
 

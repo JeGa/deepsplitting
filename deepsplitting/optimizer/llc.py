@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import logging
 
 from .base import BaseOptimizer
 from .base import Hyperparams
@@ -32,7 +33,7 @@ class Optimizer(BaseOptimizer):
 
         L, L_data, _ = self.augmented_lagrangian(inputs, labels)
 
-        print("Lagrangian = {}, Data Loss = {}".format(L, L_data))
+        logging.info("Lagrangian = {}, Data Loss = {}".format(L, L_data))
 
         return L_data
 
@@ -65,6 +66,8 @@ class Optimizer(BaseOptimizer):
                 self.levmarq_step(J, y)
 
                 L_new, _, _ = self.augmented_lagrangian(inputs, labels)
+
+                logging.info("levmarq_step: L={}, L_new={}, M={}".format(L, L_new, self.hyperparams.M))
 
                 if L < L_new:
                     self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
@@ -103,5 +106,91 @@ def primal1_ls(y, lam, y_train, rho):
     return (C * y_train + rho * y + lam) / (C + rho)
 
 
-def primal1_nll():
-    return 0
+def primal1_nll(y, lam, y_train, rho):
+    z = torch.zeros(y.size())
+
+    r = y + lam / rho
+
+    for i in range(y_train.size(0)):
+        cls = y_train[i]
+        z[i] = torch.from_numpy(prox_cross_entropy(np.expand_dims(r[i].detach().numpy(), 1), 1 / rho, cls.item()))
+
+    return z
+
+
+def prox_cross_entropy(q, tau, y):
+    q = q.squeeze()
+    rho = 1 / tau
+
+    c = q.shape[0]
+
+    I = np.eye(c)
+    b = q + I[:, y] / rho
+
+    def f(t):
+        p = b - t
+        return np.sum(lambertw_exp(p), 0) - (1 / rho)
+
+    def V(t):
+        return lambertw_exp(t)
+
+    def dV(t):
+        return V(t) / (1 + V(t))
+
+    def df(t):
+        return -np.sum(dV(b - t), 0)
+
+    t = 0.5
+    t = newton_nls(t, f, df)
+    lam = V(b - t) * rho
+    x = q - (lam - I[:, y]) / rho
+
+    return x
+
+
+# TODO: Checked.
+# lambertw_exp(np.array([[-0.576565155510187], [0.586943687333602]]))
+def lambertw_exp(X):
+    """
+    :param X: Numpy array of shape (c,1).
+    :return: Numpy array of shape (c,1).
+    """
+    # From https://github.com/foges/pogs/blob/master/src/include/prox_lib.h
+    C1 = X > 700
+    C2 = np.logical_and(np.logical_not(C1), X < 0)
+    C3 = np.logical_and(np.logical_not(C1), X > 1.098612288668110)
+
+    W = np.copy(X)
+    log_x = np.log(X[C1])
+    W[C1] = -0.36962844 + X[C1] - 0.97284858 * log_x + 1.3437973 / log_x
+    p = np.sqrt(2.0 * (np.exp(X[C2] + 1.) + 1))
+    W[C2] = -1.0 + p * 1.0 + p * (-1.0 / 3.0 + p * (11.0 / 72.0))
+
+    W[C3] = W[C3] - np.log(W[C3])
+
+    for i in range(10):
+        e = np.exp(W[np.logical_not(C1)])
+        t = W[np.logical_not(C1)] * e - np.exp(X[np.logical_not(C1)])
+        p = W[np.logical_not(C1)] + 1.
+        t = t / (e * p - 0.5 * (p + 1.0) * t / p)
+        W[np.logical_not(C1)] = W[np.logical_not(C1)] - t
+
+        if np.max(np.abs(t)) < np.min(np.spacing(np.float32(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
+            break
+
+    return W
+
+
+def newton_nls(init, f, df):
+    x = init
+
+    for i in range(30):
+        s = -f(x) / df(x)
+        sigma = 1
+
+        x = x + sigma * s
+
+        if np.abs(f(x)) < np.spacing(np.float32(1)):
+            break
+
+    return x
