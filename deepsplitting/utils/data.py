@@ -1,5 +1,61 @@
 import torch
 import torchvision
+import torch.utils.data
+import pandas as pd
+import numpy as np
+
+
+class BinarySpirals(torch.utils.data.Dataset):
+    def __init__(self, file='../data/binary_spirals/', transform=None, target_transform=None):
+        self.files = {'X_train': file + 'binary_spirals_X_train',
+                      'y_train': file + 'binary_spirals_y_train'}
+
+        self.X_train = None
+        self.y_train = None
+        self.transform = transform
+        self.target_transform = target_transform
+
+        self.read_csv()
+
+    def __len__(self):
+        return self.X_train.shape[0]
+
+    def __getitem__(self, item):
+        x = self.X_train[item, :]
+        y = self.y_train[item, :]
+
+        if self.transform:
+            x = self.transform(x)
+
+        if self.target_transform:
+            y = self.target_transform(y)
+
+        return x, y
+
+    def read_csv(self):
+        self.X_train = pd.read_csv(self.files['X_train'], header=None).values.astype('float32').reshape(-1, 2)
+        self.y_train = pd.read_csv(self.files['y_train'], header=None).values.astype('float32').reshape(-1, 2)
+
+
+def load_spirals(ttransform=None):
+    class ToTensor:
+        def __call__(self, x):
+            return torch.from_numpy(x)
+
+    transform = ToTensor()
+
+    if ttransform is not None:
+        target_transform = torchvision.transforms.Compose([ToTensor(), torchvision.transforms.Lambda(ttransform)])
+    else:
+        target_transform = ToTensor()
+
+    dataset = BinarySpirals(transform=transform, target_transform=target_transform)
+
+    training_batch_size = len(dataset)
+
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=training_batch_size, shuffle=False)
+
+    return dataloader, training_batch_size
 
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
@@ -13,6 +69,7 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
     :param folder: Folder to save data if not already downloaded.
     :param normalize_transform: A transforms.Normalize object used to normalize the inputs.
         Default normalization is to the range [-1, 1].
+
     :return: trainloader, testloader, classes
     """
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
