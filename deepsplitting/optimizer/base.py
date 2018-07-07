@@ -28,8 +28,10 @@ class BaseOptimizer:
         :param y: Shape (N, c).
         :return: J with shape (N*c, size(params)).
         """
+        self.net.zero_grad()
+
         ysize = y.numel()
-        J = np.empty((ysize, self.numparams()), dtype=np.float32)
+        J = np.empty((ysize, self.numparams()))
 
         for i, yi in enumerate(y):  # Samples
             for j, c in enumerate(yi):  # Classes.

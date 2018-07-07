@@ -42,20 +42,30 @@ class SimpleConvNet(nn.Module):
 
 
 class SimpleNet(nn.Module):
-    def __init__(self, h, criterion):
+    def __init__(self, layers, h, criterion):
         super(SimpleNet, self).__init__()
 
-        self.output_dim = 10
+        self.fclayers = []
 
-        self.fc1 = nn.Linear(784, 10)
-        self.fc2 = nn.Linear(10, self.output_dim)
+        for i in range(len(layers) - 2):
+            submodule = nn.Linear(layers[i], layers[i + 1])
+
+            self.fclayers.append(submodule)
+            self.add_module('fc' + str(i), submodule)
+
+        self.linear_layer = nn.Linear(layers[-2], layers[-1])
+
+        self.output_dim = layers[-1]
 
         self.h = h
         self.criterion = criterion
+        self.layer_size = layers
 
     def forward(self, x):
-        x = self.h(self.fc1(x))
-        x = self.fc2(x)
+        for i in range(len(self.fclayers)):
+            x = self.h(self.fclayers[i](x))
+
+        x = self.linear_layer(x)
 
         return x
 

@@ -7,38 +7,62 @@ import logging
 from .base import BaseOptimizer
 from .base import Hyperparams
 
+M_INIT = 0.001
+
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, N, hyperparams=Hyperparams(beta=0.5, gamma=10 ** -4, M=0.001, factor=10, rho=1)):
+    def __init__(self, net, N, hyperparams=Hyperparams(M=M_INIT, factor=10, rho=1)):
         super(Optimizer, self).__init__(net, hyperparams)
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:
             self.primal1_loss = primal1_nll
-        elif type(self.net.criterion) is torch.nn.MSELoss:
+        elif isinstance(self.net.criterion, torch.nn.MSELoss):
             self.primal1_loss = primal1_ls
         else:
             raise AttributeError('Loss not supported: No primal1 update function.')
 
-        self.lam = torch.ones(N, self.net.output_dim)
-        self.v = 0.1 * torch.randn(N, self.net.output_dim)
+        self.lam = torch.ones(N, self.net.output_dim, dtype=torch.double)
+        # self.v = 0.1 * torch.randn(N, self.net.output_dim)
+        self.v = torch.zeros(N, self.net.output_dim, dtype=torch.double)
+
+        def init(submodule):
+            if type(submodule) == torch.nn.Linear:
+                # torch.nn.init.normal_(submodule.weight)
+                # torch.nn.init.normal_(submodule.bias)
+
+                # submodule.weight.data.mul_(0.1)
+                # submodule.bias.data.mul_(0.1)
+
+                submodule.weight.data.fill_(1)
+                submodule.bias.data.fill_(1)
+
+        net.apply(init)
 
     def step(self, inputs, labels):
-        self.primal2_levmarq(inputs, labels)
+        self.primal2_levmarq(inputs, labels)  # TODO: This is correct.
 
-        self.primal1(inputs, labels)
+        self.primal1(inputs, labels)  # TODO: This is correct.
 
         self.dual(inputs)
 
         self.hyperparams.rho = min(1, self.hyperparams.rho + 0.1)
 
-        L, L_data, _ = self.augmented_lagrangian(inputs, labels)
+        L_data = self.eval_print(inputs, labels)
 
-        logging.info("Lagrangian = {}, Data Loss = {}".format(L, L_data))
+        return L_data
+
+    def eval_print(self, inputs, labels):
+        L, L_data, loss, constraint_norm, _ = self.augmented_lagrangian(inputs, labels)
+
+        logging.info(
+            "Data Loss = {:.8f}, Loss = {:.8f}, Constraint norm = {:.8f}, Lagrangian = {:.8f}".format(
+                L_data, loss, constraint_norm, L))
 
         return L_data
 
     def augmented_lagrangian(self, inputs, labels, params=None):
         if params is not None:
+            saved_params = self.save_params()
             self.restore_params(params)
 
         y = self.net(inputs)
@@ -50,7 +74,10 @@ class Optimizer(BaseOptimizer):
 
         L = loss + torch.mul(self.lam, constraint).sum() + (self.hyperparams.rho / 2) * constraint_norm
 
-        return L, data_loss, y
+        if params is not None:
+            self.restore_params(saved_params)
+
+        return L, data_loss, loss, constraint_norm, y
 
     def primal2_levmarq(self, inputs, labels):
         i = 0
@@ -59,20 +86,22 @@ class Optimizer(BaseOptimizer):
         while True:
             i += 1
 
-            L, _, y = self.augmented_lagrangian(inputs, labels)
+            L, _, _, _, y = self.augmented_lagrangian(inputs, labels)
             J = self.jacobian(y)
 
             while True:
-                self.levmarq_step(J, y)
+                params = self.levmarq_step(J, y)
 
-                L_new, _, _ = self.augmented_lagrangian(inputs, labels)
+                L_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, params)
 
-                logging.info("levmarq_step: L={}, L_new={}, M={}".format(L, L_new, self.hyperparams.M))
+                logging.info("levmarq_step: L={:.2f}, L_new={:.2f}, M={}".format(L, L_new, self.hyperparams.M))
 
                 if L < L_new:
                     self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
                 else:
+                    # if self.hyperparams.M > M_INIT:
                     self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                    self.restore_params(params)
                     break
 
             if i == max_iter:
@@ -80,15 +109,49 @@ class Optimizer(BaseOptimizer):
 
     def levmarq_step(self, J, y):
         r = self.v - self.lam / self.hyperparams.rho - y
-        r = torch.reshape(r, (-1,)).detach().numpy()
+        r = torch.reshape(r, (-1, 1)).data.numpy()
 
-        s = np.linalg.solve((J.T.dot(J) + self.hyperparams.M * np.eye(J.shape[1], dtype=np.float32)), J.T.dot(r))
+        Jw = []
+        Jb = []
+
+        from_index = 0
+        ls = self.net.layer_size
+
+        for i in range(len(ls) - 1):
+            to_index = from_index + ls[i] * ls[i + 1]
+
+            Jw.append(J[:, from_index:to_index])
+            from_index = to_index
+            to_index = from_index + ls[i + 1]
+
+            Jb.append(J[:, from_index:to_index])
+            from_index = to_index
+
+        Jr = np.concatenate(Jw + Jb, axis=1)
+
+        # J = Jr
+
+        A = J.T.dot(J) + self.hyperparams.M * np.eye(J.shape[1])
+        B = J.T.dot(r)
+
+        # print(r)
+        # print(A)
+        # print(B)
+
+        s = np.linalg.solve(A, B)
+
+        param_list = []
 
         start_index = 0
         for p in self.net.parameters():
             with torch.no_grad():
-                p.add_(torch.reshape(torch.from_numpy(s[start_index:start_index + p.numel()]), p.size()))
+                params = torch.from_numpy(s[start_index:start_index + p.numel()])
+                params_rs = torch.reshape(params, p.size())
+                param_list.append(p + params_rs)
+
             start_index += p.numel()
+
+        return param_list
 
     def primal1(self, inputs, labels):
         y = self.net(inputs)
@@ -102,7 +165,7 @@ class Optimizer(BaseOptimizer):
 
 
 def primal1_ls(y, lam, y_train, rho):
-    C = 1 / y_train.size(0)
+    C = 1  # / y_train.size(0)
     return (C * y_train + rho * y + lam) / (C + rho)
 
 
@@ -175,7 +238,7 @@ def lambertw_exp(X):
         t = t / (e * p - 0.5 * (p + 1.0) * t / p)
         W[np.logical_not(C1)] = W[np.logical_not(C1)] - t
 
-        if np.max(np.abs(t)) < np.min(np.spacing(np.float32(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
+        if np.max(np.abs(t)) < np.min(np.spacing(np.float64(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
             break
 
     return W
@@ -190,7 +253,7 @@ def newton_nls(init, f, df):
 
         x = x + sigma * s
 
-        if np.abs(f(x)) < np.spacing(np.float32(1)):
+        if np.abs(f(x)) < np.spacing(np.float64(1)):
             break
 
     return x

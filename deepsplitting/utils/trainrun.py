@@ -4,6 +4,11 @@ import logging
 def train(net, trainloader, optimizer, epochs):
     losses = list()
 
+    # for i, data in enumerate(trainloader):
+    # inputs, labels = iter(trainloader).next()
+
+    # optimizer.eval_print(inputs, labels)
+
     for epoch in range(epochs):
         for i, data in enumerate(trainloader):
             inputs, labels = data
