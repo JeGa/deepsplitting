@@ -49,3 +49,15 @@ class BaseOptimizer:
 
     def numparams(self):
         return sum(p.numel() for p in self.net.parameters())
+
+    def vec_to_params_update(self, s):
+        param_list = []
+
+        start_index = 0
+        for p in self.net.parameters():
+            with torch.no_grad():
+                params = torch.from_numpy(s[start_index:start_index + p.numel()])
+                params_rs = torch.reshape(params, p.size())
+                param_list.append(p + params_rs)
+
+            start_index += p.numel()

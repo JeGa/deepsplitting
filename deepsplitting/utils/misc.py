@@ -4,6 +4,8 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+import deepsplitting.data.cifar10
+import deepsplitting.data.mnist
 
 def imshow(img):
     img = img / 2 + 0.5
@@ -34,7 +36,12 @@ def one_hot(x, classes):
     else:
         N = 1
 
-    onehot = torch.zeros((N, classes))
+    onehot = torch.zeros((N, classes), dtype=torch.float64)
     onehot[list(range(N)), x] = 1
 
     return onehot
+
+
+def cifarshow():
+    trainloader, testloader, classes, training_batch_size, test_batch_size = deepsplitting.data.cifar10.load_CIFAR10(8, 8)
+    show(trainloader)

@@ -1,6 +1,6 @@
 import torch
 import logging
-import deepsplitting
+import deepsplitting.utils.misc
 
 
 def run(net, testloader, eval_results):
@@ -33,11 +33,11 @@ def test_nll(net, testloader):
     run(net, testloader, evaluate)
 
 
-def test_ls(net, testloader):
+def test_ls(net, testloader, classes):
     def evaluate(outputs, labels):
         _, predicted = torch.max(outputs.data, 1)
 
-        predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, 10)
+        predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, classes)
         return torch.sum(labels == predicted_one_hot, 1) == labels.size(1)
 
     run(net, testloader, evaluate)

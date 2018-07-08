@@ -39,9 +39,9 @@ class Optimizer(BaseOptimizer):
         net.apply(init)
 
     def step(self, inputs, labels):
-        self.primal2_levmarq(inputs, labels)  # TODO: This is correct.
+        self.primal2_levmarq(inputs, labels)
 
-        self.primal1(inputs, labels)  # TODO: This is correct.
+        self.primal1(inputs, labels)
 
         self.dual(inputs)
 
@@ -94,12 +94,11 @@ class Optimizer(BaseOptimizer):
 
                 L_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, params)
 
-                logging.info("levmarq_step: L={:.2f}, L_new={:.2f}, M={}".format(L, L_new, self.hyperparams.M))
+                logging.debug("levmarq_step: L={:.2f}, L_new={:.2f}, M={}".format(L, L_new, self.hyperparams.M))
 
                 if L < L_new:
                     self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
                 else:
-                    # if self.hyperparams.M > M_INIT:
                     self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
                     self.restore_params(params)
                     break
@@ -111,52 +110,19 @@ class Optimizer(BaseOptimizer):
         r = self.v - self.lam / self.hyperparams.rho - y
         r = torch.reshape(r, (-1, 1)).data.numpy()
 
-        Jw = []
-        Jb = []
-
-        from_index = 0
-        ls = self.net.layer_size
-
-        for i in range(len(ls) - 1):
-            to_index = from_index + ls[i] * ls[i + 1]
-
-            Jw.append(J[:, from_index:to_index])
-            from_index = to_index
-            to_index = from_index + ls[i + 1]
-
-            Jb.append(J[:, from_index:to_index])
-            from_index = to_index
-
-        Jr = np.concatenate(Jw + Jb, axis=1)
-
-        # J = Jr
-
         A = J.T.dot(J) + self.hyperparams.M * np.eye(J.shape[1])
         B = J.T.dot(r)
 
-        # print(r)
-        # print(A)
-        # print(B)
-
         s = np.linalg.solve(A, B)
 
-        param_list = []
-
-        start_index = 0
-        for p in self.net.parameters():
-            with torch.no_grad():
-                params = torch.from_numpy(s[start_index:start_index + p.numel()])
-                params_rs = torch.reshape(params, p.size())
-                param_list.append(p + params_rs)
-
-            start_index += p.numel()
+        param_list = self.vec_to_params_update(s)
 
         return param_list
 
     def primal1(self, inputs, labels):
         y = self.net(inputs)
 
-        self.v = self.primal1_loss(y, self.lam, labels, self.hyperparams.rho)
+        self.v = self.primal1_loss(y, self.lam, labels, self.hyperparams.rho, self.net.criterion)
 
     def dual(self, inputs):
         y = self.net(inputs)
@@ -164,12 +130,15 @@ class Optimizer(BaseOptimizer):
         self.lam = self.lam + self.hyperparams.rho * (y - self.v)
 
 
-def primal1_ls(y, lam, y_train, rho):
-    C = 1  # / y_train.size(0)
+def primal1_ls(y, lam, y_train, rho, loss):
+    C = 2 * loss.C
+    if loss.size_average is True:
+        C = C * 1 / y_train.size(0)
+
     return (C * y_train + rho * y + lam) / (C + rho)
 
 
-def primal1_nll(y, lam, y_train, rho):
+def primal1_nll(y, lam, y_train, rho, loss):
     z = torch.zeros(y.size())
 
     r = y + lam / rho
@@ -257,3 +226,27 @@ def newton_nls(init, f, df):
             break
 
     return x
+
+
+def bias_to_end(J, ls):
+    """
+    For debugging.
+
+    ls = net.layer_size.
+    """
+    Jw = []
+    Jb = []
+
+    from_index = 0
+
+    for i in range(len(ls) - 1):
+        to_index = from_index + ls[i] * ls[i + 1]
+
+        Jw.append(J[:, from_index:to_index])
+        from_index = to_index
+        to_index = from_index + ls[i + 1]
+
+        Jb.append(J[:, from_index:to_index])
+        from_index = to_index
+
+    return np.concatenate(Jw + Jb, axis=1)

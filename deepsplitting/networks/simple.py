@@ -41,9 +41,9 @@ class SimpleConvNet(nn.Module):
         return self.criterion(self(inputs), labels)
 
 
-class SimpleNet(nn.Module):
+class SimpleFFNet(nn.Module):
     def __init__(self, layers, h, criterion):
-        super(SimpleNet, self).__init__()
+        super(SimpleFFNet, self).__init__()
 
         self.fclayers = []
 
