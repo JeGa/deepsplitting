@@ -6,6 +6,7 @@ import deepsplitting.optimizer.gradient_descent as GD
 import deepsplitting.optimizer.gradient_descent_armijo as GDA
 import deepsplitting.optimizer.llc as LLC
 import deepsplitting.optimizer.prox_descent as ProxDescent
+import deepsplitting.optimizer.levenberg_marquardt as LM
 from deepsplitting.utils.initializer import ff_spirals
 from deepsplitting.utils.testrun import test_ls
 from deepsplitting.utils.trainrun import train
@@ -20,10 +21,11 @@ def main():
 
     optimizer = {'LLC': LLC.Optimizer(net, N=training_batch_size),  # Not with nll
                  'ProxDescent': ProxDescent.Optimizer(net),  # not with nll
+                 'LM': LM.Optimizer(net),  # Only works with LS loss.
                  'GDA': GDA.Optimizer(net),
                  'GD': GD.Optimizer(net)}
 
-    losses = train(net, trainloader, optimizer['ProxDescent'], 80)
+    losses = train(net, trainloader, optimizer['LM'], 30)
 
     plt.figure()
     plt.plot(losses)
