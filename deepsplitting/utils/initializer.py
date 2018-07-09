@@ -43,7 +43,7 @@ def ff_spirals(loss_type):
     else:
         raise ValueError("Unsupported loss type.")
 
-    layers = [2, 12, 12, 12, 2]
+    layers = [2, 12, 2]
     activation = F.relu
 
     net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()

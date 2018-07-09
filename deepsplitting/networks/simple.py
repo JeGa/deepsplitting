@@ -8,7 +8,6 @@ class SimpleConvNet(nn.Module):
     Input: (3,32,32) image.
     Output: 10 classes.
     """
-
     def __init__(self, h, criterion):
         super(SimpleConvNet, self).__init__()
 

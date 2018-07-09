@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import logging
 
 from .base import BaseOptimizer
 from .base import Hyperparams
@@ -11,12 +12,10 @@ class Optimizer(BaseOptimizer):
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:
             self.minimize_linearized_penalty = minimize_linearized_penalty_nll
-            self.loss_linearized = loss_linearized_nll
         elif isinstance(self.net.criterion, torch.nn.MSELoss):
             self.minimize_linearized_penalty = minimize_linearized_penalty_ls
-            self.loss_linearized = loss_linearized_ls
         else:
-            raise AttributeError('Loss not supported: No minimize linearized function.')
+            raise AttributeError('Loss not supported: No minimize linearized penalty function.')
 
         self.mu = self.hyperparams.mu_min
 
@@ -25,42 +24,55 @@ class Optimizer(BaseOptimizer):
         J = self.jacobian(y)
 
         while True:
-            # Step.
-            d = self.minimize_linearized_penalty(J, y, labels, self.mu, self.net.criterion)
+            d = self.minimize_linearized_penalty(J, y.detach().numpy(), labels.numpy(), self.mu, self.net.criterion)
             new_params = self.vec_to_params_update(d)
 
+            # With current weights.
             L_current = self.net.loss(inputs, labels)
 
             # Update weights.
             old_params = self.save_params()
             self.restore_params(new_params)
 
+            # With new weights.
             L_new = self.net.loss(inputs, labels)
 
-            L_new_linearized = self.loss_linearized(labels, J, y, d, self.hyperparams.mu)
+            L_new_linearized = self.loss_linearized(labels, J, y, d, self.mu)
+
+            diff_real = L_current - L_new
+            diff_linearized = L_current - L_new_linearized
+
+            if diff_real >= self.hyperparams.sigma * diff_linearized:
+                self.mu = max(self.hyperparams.mu_min, self.mu / self.hyperparams.tau)
+                break
+            else:
+                self.mu = self.hyperparams.tau * self.mu
+                self.restore_params(old_params)
+
+        logging.info("Loss = {:.8f}".format(L_new))
+
+        return L_new
 
     def loss_linearized(self, y_train, J, y, d, mu):
-        pass
+        N, c = y_train.size()
+        lin = y + torch.from_numpy(np.reshape(J.dot(d), (N, c)))
+
+        loss = self.net.criterion(lin, y_train)
+
+        reg = 0.5 * mu * np.sum(d ** 2)
+
+        return loss + reg
 
 
 def minimize_linearized_penalty_nll(J, y, y_train, mu, loss):
     raise NotImplementedError
 
 
-def loss_linearized_nll(labels, J, y, d, mu):
-    raise NotImplementedError
-
-
 # TODO: What if not 0.5 * loss.
 def minimize_linearized_penalty_ls(J, y, y_train, mu, loss):
     if loss.size_average is True:
-        N = 1 / y_train.size(0)
+        N = y_train.shape[0]
     else:
         N = 1
 
-    d = np.linalg.inv(mu * N * np.eye(J.shape[1]) + J.T.dot(J)).dot(J.T.dot(np.reshape(y_train - y, (-1, 1))))
-    return d
-
-
-def loss_linearized_ls(labels, J, y, d, mu):
-    pass
+    return np.linalg.inv(mu * N * np.eye(J.shape[1]) + J.T.dot(J)).dot(J.T.dot(np.reshape(y_train - y, (-1, 1))))

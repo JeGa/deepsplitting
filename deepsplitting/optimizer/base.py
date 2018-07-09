@@ -61,3 +61,5 @@ class BaseOptimizer:
                 param_list.append(p + params_rs)
 
             start_index += p.numel()
+
+        return param_list
