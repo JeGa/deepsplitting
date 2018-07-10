@@ -3,10 +3,10 @@ from .base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams=Hyperparams(lr=0.01)):
+    def __init__(self, net, hyperparams=Hyperparams(lr=0.0005)):
         super(Optimizer, self).__init__(net, hyperparams)
 
-    def step(self, inputs=None, labels=None):
+    def step(self, inputs, labels):
         loss = self.net.loss(inputs, labels)
         loss.backward()
 
@@ -16,4 +16,4 @@ class Optimizer(BaseOptimizer):
 
             p.data.add_(-self.hyperparams.lr, p.grad.data)
 
-        return loss.item()
+        return loss.item(), self.net.loss(inputs, labels).item()

@@ -27,14 +27,14 @@ class Optimizer(BaseOptimizer):
             d = self.minimize_linearized_penalty(J, y.detach().numpy(), labels.numpy(), self.mu, self.net.criterion)
             new_params = self.vec_to_params_update(d)
 
-            # With current weights.
+            # With current parameters.
             L_current = self.net.loss(inputs, labels)
 
-            # Update weights.
+            # Update parameters.
             old_params = self.save_params()
             self.restore_params(new_params)
 
-            # With new weights.
+            # With new parameters.
             L_new = self.net.loss(inputs, labels)
 
             L_new_linearized = self.loss_linearized(labels, J, y, d, self.mu)
@@ -49,9 +49,7 @@ class Optimizer(BaseOptimizer):
                 self.mu = self.hyperparams.tau * self.mu
                 self.restore_params(old_params)
 
-        logging.info("Loss = {:.8f}".format(L_new))
-
-        return L_new
+        return L_current.item(), L_new.item()
 
     def loss_linearized(self, y_train, J, y, d, mu):
         N, c = y_train.size()

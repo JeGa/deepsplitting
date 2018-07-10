@@ -30,7 +30,7 @@ def ff_mnist_vectorized(loss_type):
     return net, trainloader, testloader, training_batch_size, test_batch_size
 
 
-def ff_spirals(loss_type):
+def ff_spirals(loss_type, activation_type):
     if loss_type == 'ls':
         tf = None
         loss = deepsplitting.losses.mse.WeightedMSELoss()
@@ -43,10 +43,16 @@ def ff_spirals(loss_type):
     else:
         raise ValueError("Unsupported loss type.")
 
-    layers = [2, 12, 2]
-    activation = F.relu
+    layers = [2, 12, 12, 12, 2]
+
+    if activation_type == 'relu':
+        activation = F.relu
+    elif activation_type == 'sigmoid':
+        activation = F.sigmoid
+    else:
+        raise ValueError('Unsupported activation type.')
 
     net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()
-    trainloader, training_batch_size = deepsplitting.data.spirals.load_spirals(target_transform=tf)
+    trainloader, training_batch_size = deepsplitting.data.spirals.load_spirals(training_samples=-1, target_transform=tf)
 
     return net, trainloader, training_batch_size

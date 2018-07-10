@@ -17,7 +17,7 @@ class Optimizer(BaseOptimizer):
 
         self._armijo_step(params, grads, step_direction, inputs, labels)
 
-        return loss.item()
+        return loss.item(), self.net.loss(inputs, labels).item()
 
     def _armijo_step(self, params, grads, step_direction, inputs, labels):
         k = 1

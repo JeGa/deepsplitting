@@ -1,25 +1,26 @@
-import torch.nn as nn
+import torch
 
 
-class SimpleConvNet(nn.Module):
+class SimpleConvNet(torch.nn.Module):
     """
     From pytorch tutorial.
 
     Input: (3,32,32) image.
     Output: 10 classes.
     """
+
     def __init__(self, h, criterion):
         super(SimpleConvNet, self).__init__()
 
         self.output_dim = 10
 
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.pool = nn.MaxPool2d(2, 2)
+        self.conv1 = torch.nn.Conv2d(3, 6, 5)
+        self.conv2 = torch.nn.Conv2d(6, 16, 5)
+        self.pool = torch.nn.MaxPool2d(2, 2)
 
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, self.output_dim)
+        self.fc1 = torch.nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = torch.nn.Linear(120, 84)
+        self.fc3 = torch.nn.Linear(84, self.output_dim)
 
         self.h = h
         self.criterion = criterion
@@ -40,19 +41,19 @@ class SimpleConvNet(nn.Module):
         return self.criterion(self(inputs), labels)
 
 
-class SimpleFFNet(nn.Module):
+class SimpleFFNet(torch.nn.Module):
     def __init__(self, layers, h, criterion):
         super(SimpleFFNet, self).__init__()
 
         self.fclayers = []
 
         for i in range(len(layers) - 2):
-            submodule = nn.Linear(layers[i], layers[i + 1])
+            submodule = torch.nn.Linear(layers[i], layers[i + 1])
 
             self.fclayers.append(submodule)
             self.add_module('fc' + str(i), submodule)
 
-        self.linear_layer = nn.Linear(layers[-2], layers[-1])
+        self.linear_layer = torch.nn.Linear(layers[-2], layers[-1])
 
         self.output_dim = layers[-1]
 

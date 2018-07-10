@@ -1,6 +1,4 @@
 import numpy as np
-import torch
-import logging
 
 from .base import BaseOptimizer
 from .base import Hyperparams
@@ -32,7 +30,7 @@ class Optimizer(BaseOptimizer):
                 self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
                 break
 
-        return L_new
+        return L.item(), L_new.item()
 
     def levmarq_step(self, J, y, y_train, M):
         r = np.reshape(y_train - y, (-1, 1))
@@ -41,3 +39,6 @@ class Optimizer(BaseOptimizer):
         B = J.T.dot(r)
 
         return np.linalg.solve(A, B)
+
+    def start_eval(self, inputs, labels):
+        return self.net.loss(inputs, labels)

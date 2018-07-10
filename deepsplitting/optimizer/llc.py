@@ -1,4 +1,4 @@
-# TODO: No Regularizer currently!
+# TODO: No regularizer currently!
 
 import numpy as np
 import torch
@@ -6,13 +6,15 @@ import logging
 
 from .base import BaseOptimizer
 from .base import Hyperparams
+from .misc import prox_cross_entropy
 
-M_INIT = 0.001
+
+# TODO: M_INIT = 0.001
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, N, hyperparams=Hyperparams(M=M_INIT, factor=10, rho=1)):
-        super(Optimizer, self).__init__(net, hyperparams)
+    def __init__(self, net, N, debug=False, hyperparams=Hyperparams(M=0.001, factor=10, rho=1)):
+        super(Optimizer, self).__init__(net, hyperparams, debug)
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:
             self.primal1_loss = primal1_nll
@@ -22,23 +24,15 @@ class Optimizer(BaseOptimizer):
             raise AttributeError('Loss not supported: No primal1 update function.')
 
         self.lam = torch.ones(N, self.net.output_dim, dtype=torch.double)
-        # self.v = 0.1 * torch.randn(N, self.net.output_dim)
-        self.v = torch.zeros(N, self.net.output_dim, dtype=torch.double)
 
-        def init(submodule):
-            if type(submodule) == torch.nn.Linear:
-                # torch.nn.init.normal_(submodule.weight)
-                # torch.nn.init.normal_(submodule.bias)
-
-                # submodule.weight.data.mul_(0.1)
-                # submodule.bias.data.mul_(0.1)
-
-                submodule.weight.data.fill_(1)
-                submodule.bias.data.fill_(1)
-
-        net.apply(init)
+        if debug:
+            self.v = torch.zeros(N, self.net.output_dim, dtype=torch.double)
+        else:
+            self.v = 0.1 * torch.randn(N, self.net.output_dim, dtype=torch.double)
 
     def step(self, inputs, labels):
+        L_data_current = self.eval(inputs, labels)
+
         self.primal2_levmarq(inputs, labels)
 
         self.primal1(inputs, labels)
@@ -47,16 +41,17 @@ class Optimizer(BaseOptimizer):
 
         self.hyperparams.rho = min(1, self.hyperparams.rho + 0.1)
 
-        L_data = self.eval_print(inputs, labels)
+        L_data_new = self.eval(inputs, labels)
 
-        return L_data
+        return L_data_current.item(), L_data_new.item()
 
-    def eval_print(self, inputs, labels):
+    def eval(self, inputs, labels, print=False):
         L, L_data, loss, constraint_norm, _ = self.augmented_lagrangian(inputs, labels)
 
-        logging.info(
-            "Data Loss = {:.8f}, Loss = {:.8f}, Constraint norm = {:.8f}, Lagrangian = {:.8f}".format(
-                L_data, loss, constraint_norm, L))
+        if print:
+            logging.info(
+                "Data Loss = {:.8f}, Loss = {:.8f}, Constraint norm = {:.8f}, Lagrangian = {:.8f}".format(
+                    L_data, loss, constraint_norm, L))
 
         return L_data
 
@@ -148,105 +143,3 @@ def primal1_nll(y, lam, y_train, rho, loss):
         z[i] = torch.from_numpy(prox_cross_entropy(np.expand_dims(r[i].detach().numpy(), 1), 1 / rho, cls.item()))
 
     return z
-
-
-def prox_cross_entropy(q, tau, y):
-    q = q.squeeze()
-    rho = 1 / tau
-
-    c = q.shape[0]
-
-    I = np.eye(c)
-    b = q + I[:, y] / rho
-
-    def f(t):
-        p = b - t
-        return np.sum(lambertw_exp(p), 0) - (1 / rho)
-
-    def V(t):
-        return lambertw_exp(t)
-
-    def dV(t):
-        return V(t) / (1 + V(t))
-
-    def df(t):
-        return -np.sum(dV(b - t), 0)
-
-    t = 0.5
-    t = newton_nls(t, f, df)
-    lam = V(b - t) * rho
-    x = q - (lam - I[:, y]) / rho
-
-    return x
-
-
-# TODO: Checked.
-# lambertw_exp(np.array([[-0.576565155510187], [0.586943687333602]]))
-def lambertw_exp(X):
-    """
-    :param X: Numpy array of shape (c,1).
-    :return: Numpy array of shape (c,1).
-    """
-    # From https://github.com/foges/pogs/blob/master/src/include/prox_lib.h
-    C1 = X > 700
-    C2 = np.logical_and(np.logical_not(C1), X < 0)
-    C3 = np.logical_and(np.logical_not(C1), X > 1.098612288668110)
-
-    W = np.copy(X)
-    log_x = np.log(X[C1])
-    W[C1] = -0.36962844 + X[C1] - 0.97284858 * log_x + 1.3437973 / log_x
-    p = np.sqrt(2.0 * (np.exp(X[C2] + 1.) + 1))
-    W[C2] = -1.0 + p * 1.0 + p * (-1.0 / 3.0 + p * (11.0 / 72.0))
-
-    W[C3] = W[C3] - np.log(W[C3])
-
-    for i in range(10):
-        e = np.exp(W[np.logical_not(C1)])
-        t = W[np.logical_not(C1)] * e - np.exp(X[np.logical_not(C1)])
-        p = W[np.logical_not(C1)] + 1.
-        t = t / (e * p - 0.5 * (p + 1.0) * t / p)
-        W[np.logical_not(C1)] = W[np.logical_not(C1)] - t
-
-        if np.max(np.abs(t)) < np.min(np.spacing(np.float64(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
-            break
-
-    return W
-
-
-def newton_nls(init, f, df):
-    x = init
-
-    for i in range(30):
-        s = -f(x) / df(x)
-        sigma = 1
-
-        x = x + sigma * s
-
-        if np.abs(f(x)) < np.spacing(np.float64(1)):
-            break
-
-    return x
-
-
-def bias_to_end(J, ls):
-    """
-    For debugging.
-
-    ls = net.layer_size.
-    """
-    Jw = []
-    Jb = []
-
-    from_index = 0
-
-    for i in range(len(ls) - 1):
-        to_index = from_index + ls[i] * ls[i + 1]
-
-        Jw.append(J[:, from_index:to_index])
-        from_index = to_index
-        to_index = from_index + ls[i + 1]
-
-        Jb.append(J[:, from_index:to_index])
-        from_index = to_index
-
-    return np.concatenate(Jw + Jb, axis=1)

@@ -1,24 +1,22 @@
 import logging
 
 
-def train(net, trainloader, optimizer, epochs):
+def train(trainloader, optimizer, epochs):
     losses = list()
 
-    # for i, data in enumerate(trainloader):
-    # inputs, labels = iter(trainloader).next()
+    log_iter = 1
 
-    # optimizer.eval_print(inputs, labels)
+    # Only full batch.
+    inputs, labels = iter(trainloader).next()
 
     for epoch in range(epochs):
-        for i, data in enumerate(trainloader):
-            inputs, labels = data
+        optimizer.zero_grad()
 
-            net.zero_grad()
+        current_loss, new_loss = optimizer.step(inputs, labels)
+        losses.append(current_loss)
 
-            loss = optimizer.step(inputs, labels)
-            losses.append(loss)
-
-        if epoch % 10 == 9:
-            logging.info('[%d/%d] loss: %.3f' % (epoch + 1, epochs, loss))
+        if epoch % log_iter == log_iter - 1:
+            logging.info(
+                "{}: [{}/{}] Loss = {:.6f}".format(type(optimizer).__module__, epoch + 1, epochs, current_loss))
 
     return losses

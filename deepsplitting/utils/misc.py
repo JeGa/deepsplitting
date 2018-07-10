@@ -7,8 +7,9 @@ import numpy as np
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
 
-def imshow(img):
-    img = img / 2 + 0.5
+
+def imshow(img, factor=1 / (2 + 0.5)):
+    img = img * factor
     npimg = img.numpy()
 
     plt.figure()
@@ -42,6 +43,34 @@ def one_hot(x, classes):
     return onehot
 
 
+def plot_loss_curve(losses, title=''):
+    plt.figure()
+
+    plt.title(title)
+
+    plt.plot(losses)
+    plt.xlabel('Iteration')
+    plt.ylabel('Objective')
+
+    plt.show()
+
+
+def plot_summary(summary, title=''):
+    plt.figure()
+
+    plt.title(title)
+
+    for key, losses in summary.items():
+        plt.plot(losses, label=key)
+
+    plt.legend()
+    plt.xlabel('Iteration')
+    plt.ylabel('Objective')
+
+    plt.show()
+
+
 def cifarshow():
-    trainloader, testloader, classes, training_batch_size, test_batch_size = deepsplitting.data.cifar10.load_CIFAR10(8, 8)
+    trainloader, testloader, classes, training_batch_size, test_batch_size = \
+        deepsplitting.data.cifar10.load_CIFAR10(8, 8)
     show(trainloader)
