@@ -39,7 +39,7 @@ def ff_spirals(loss_type, activation_type):
             return target.argmax()
 
         tf = target_transform
-        loss = torch.nn.CrossEntropyLoss()
+        loss = torch.nn.CrossEntropyLoss(size_average=False)
     else:
         raise ValueError("Unsupported loss type.")
 

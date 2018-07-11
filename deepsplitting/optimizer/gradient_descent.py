@@ -17,3 +17,6 @@ class Optimizer(BaseOptimizer):
             p.data.add_(-self.hyperparams.lr, p.grad.data)
 
         return loss.item(), self.net.loss(inputs, labels).item()
+
+    def init(self, debug=False):
+        super(Optimizer, self).init_parameters(debug)

@@ -8,11 +8,14 @@ class Hyperparams:
 
 
 class BaseOptimizer:
-    def __init__(self, net, hyperparams, debug=False):
+    def __init__(self, net, hyperparams):
         self.net = net
         self.hyperparams = hyperparams
 
-        def init(submodule):
+        self.init_parameters()
+
+    def init_parameters(self, debug=False):
+        def init_fun(submodule):
             if type(submodule) == torch.nn.Linear:
                 if debug:
                     submodule.weight.data.fill_(1)
@@ -24,7 +27,10 @@ class BaseOptimizer:
                     submodule.weight.data.mul_(0.1)
                     submodule.bias.data.mul_(0.1)
 
-        net.apply(init)
+        self.net.apply(init_fun)
+
+    def init(self, debug=False):
+        raise NotImplementedError
 
     def step(self, inputs, labels):
         raise NotImplementedError

@@ -9,12 +9,9 @@ from .base import Hyperparams
 from .misc import prox_cross_entropy
 
 
-# TODO: M_INIT = 0.001
-
-
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, N, debug=False, hyperparams=Hyperparams(M=0.001, factor=10, rho=1)):
-        super(Optimizer, self).__init__(net, hyperparams, debug)
+    def __init__(self, net, N, hyperparams=Hyperparams(M=0.001, factor=10, rho=1)):
+        super(Optimizer, self).__init__(net, hyperparams)
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:
             self.primal1_loss = primal1_nll
@@ -23,12 +20,22 @@ class Optimizer(BaseOptimizer):
         else:
             raise AttributeError('Loss not supported: No primal1 update function.')
 
-        self.lam = torch.ones(N, self.net.output_dim, dtype=torch.double)
+        self.N = N
+
+        self.init_variables()
+
+    def init_variables(self, debug=False):
+        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.double)
 
         if debug:
-            self.v = torch.zeros(N, self.net.output_dim, dtype=torch.double)
+            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.double)
         else:
-            self.v = 0.1 * torch.randn(N, self.net.output_dim, dtype=torch.double)
+            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.double)
+
+    def init(self, debug=False):
+        super(Optimizer, self).init_parameters(debug)
+
+        self.init_variables(debug)
 
     def step(self, inputs, labels):
         L_data_current = self.eval(inputs, labels)
@@ -134,7 +141,7 @@ def primal1_ls(y, lam, y_train, rho, loss):
 
 
 def primal1_nll(y, lam, y_train, rho, loss):
-    z = torch.zeros(y.size())
+    z = torch.zeros(y.size(), dtype=torch.double)
 
     r = y + lam / rho
 

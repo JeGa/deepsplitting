@@ -6,6 +6,8 @@ def train(trainloader, optimizer, epochs):
 
     log_iter = 1
 
+    optimizer.init(debug=False)
+
     # Only full batch.
     inputs, labels = iter(trainloader).next()
 

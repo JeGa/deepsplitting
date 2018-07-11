@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import logging
+from scipy.optimize import minimize
 
 from .base import BaseOptimizer
 from .base import Hyperparams
@@ -52,7 +52,7 @@ class Optimizer(BaseOptimizer):
         return L_current.item(), L_new.item()
 
     def loss_linearized(self, y_train, J, y, d, mu):
-        N, c = y_train.size()
+        N, c = y.size()
         lin = y + torch.from_numpy(np.reshape(J.dot(d), (N, c)))
 
         loss = self.net.criterion(lin, y_train)
@@ -61,12 +61,63 @@ class Optimizer(BaseOptimizer):
 
         return loss + reg
 
+    def init(self, debug=False):
+        super(Optimizer, self).init_parameters(debug)
+
+        self.mu = self.hyperparams.mu_min
+
 
 def minimize_linearized_penalty_nll(J, y, y_train, mu, loss):
-    raise NotImplementedError
+    d0 = np.ones(J.shape[1])
+
+    def linearized_penalty(d):
+        d = np.expand_dims(d, 1)
+
+        f = y + np.reshape(J.dot(d), y.shape)
+        L = loss(torch.from_numpy(f), torch.from_numpy(y_train)).item()
+
+        reg = + 0.5 * mu * np.sum(np.power(d, 2))
+
+        return L + reg
+
+    def gradient_linearized_penalty(d):
+        d = np.expand_dims(d, 1)
+
+        N, c = y.shape
+
+        grad = np.zeros(d.shape)
+
+        for i in range(N):
+            from_sample = i * c
+            to_sample = from_sample + c
+
+            Ji = J[from_sample:to_sample, :]
+
+            yi = np.expand_dims(y[i, :], 1)
+            yi_train = y_train[i]
+            fi = yi + Ji.dot(d)
+
+            fit = torch.from_numpy(fi.T)
+            fit.requires_grad = True
+
+            L = loss(fit, torch.from_numpy(np.expand_dims(yi_train, 0)))
+            L.backward()
+            gL = fit.grad.data.numpy().T
+
+            grad = grad + Ji.T.dot(gL)
+
+        return (grad + mu * d).squeeze()
+
+    result = minimize(linearized_penalty, d0, jac=gradient_linearized_penalty,
+                      options={'gtol': 1e-05, 'norm': np.inf, 'eps': 1.4901161193847656e-08, 'maxiter': None,
+                               'disp': False, 'return_all': False})
+
+    d = result.x
+
+    return d
 
 
-# TODO: What if not 0.5 * loss.
+# TODO: If not 0.5 * loss.
 def minimize_linearized_penalty_ls(J, y, y_train, mu, loss):
     if loss.size_average is True:
         N = y_train.shape[0]

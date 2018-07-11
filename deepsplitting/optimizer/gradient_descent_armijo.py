@@ -47,3 +47,6 @@ class Optimizer(BaseOptimizer):
         self.restore_params(current_params)
 
         return False
+
+    def init(self, debug=False):
+        super(Optimizer, self).init_parameters(debug)

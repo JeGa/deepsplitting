@@ -55,13 +55,13 @@ def plot_loss_curve(losses, title=''):
     plt.show()
 
 
-def plot_summary(summary, title=''):
+def plot_summary(summary, timer, title=''):
     plt.figure()
 
     plt.title(title)
 
     for key, losses in summary.items():
-        plt.plot(losses, label=key)
+        plt.plot(losses, label="{} {:.6f}s".format(key, timer.times[key]))
 
     plt.legend()
     plt.xlabel('Iteration')

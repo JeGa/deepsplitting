@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from .base import BaseOptimizer
 from .base import Hyperparams
@@ -8,6 +9,11 @@ class Optimizer(BaseOptimizer):
     def __init__(self, net, hyperparams=Hyperparams(M=0.001, factor=10)):
         super(Optimizer, self).__init__(net, hyperparams)
 
+        if not isinstance(self.net.criterion, torch.nn.MSELoss):
+            raise ValueError("Only works with least squares loss.")
+
+        self.M = self.hyperparams.M
+
     def step(self, inputs, labels):
         y = self.net(inputs)
         J = self.jacobian(y)
@@ -15,7 +21,7 @@ class Optimizer(BaseOptimizer):
         L = self.net.criterion(y, labels)
 
         while True:
-            s = self.levmarq_step(J, y.detach().numpy(), labels.numpy(), self.hyperparams.M)
+            s = self.levmarq_step(J, y.detach().numpy(), labels.numpy(), self.M)
             new_params = self.vec_to_params_update(s)
 
             old_params = self.save_params()
@@ -24,10 +30,10 @@ class Optimizer(BaseOptimizer):
             L_new = self.net.loss(inputs, labels)
 
             if L < L_new:
-                self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
+                self.M = self.M * self.factor
                 self.restore_params(old_params)
             else:
-                self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                self.M = self.M / self.hyperparams.factor
                 break
 
         return L.item(), L_new.item()
@@ -42,3 +48,8 @@ class Optimizer(BaseOptimizer):
 
     def start_eval(self, inputs, labels):
         return self.net.loss(inputs, labels)
+
+    def init(self, debug=False):
+        super(Optimizer, self).init_parameters(debug)
+
+        self.M = self.hyperparams.M
