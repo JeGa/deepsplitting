@@ -6,7 +6,7 @@ from deepsplitting.data.misc import get_sampler
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
                  normalize_transform=torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                 folder='../data'):
+                 folder='data'):
     """
     Load CIFAR10 data set. Data is always sampled in the same order and full batch.
     Default normalization is to the range [-1, 1].

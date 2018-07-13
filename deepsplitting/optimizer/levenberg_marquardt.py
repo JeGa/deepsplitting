@@ -30,7 +30,7 @@ class Optimizer(BaseOptimizer):
             L_new = self.net.loss(inputs, labels)
 
             if L < L_new:
-                self.M = self.M * self.factor
+                self.M = self.M * self.hyperparams.factor
                 self.restore_params(old_params)
             else:
                 self.M = self.M / self.hyperparams.factor

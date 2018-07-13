@@ -34,39 +34,42 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     params = {
-        'loss_type': 'nll',  # 'ls' or 'nll'
-        'activation_type': 'relu',  # 'relu' or 'sigmoid'
+        'loss_type': 'ls',  # 'ls' or 'nll'.
+        'activation_type': 'relu',  # 'relu' or 'sigmoid'.
         'resutls_folder': '../results'
     }
 
     net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'], params['activation_type'])
 
-    optimizer_params = optimizer_params_nll
+    if params['loss_type'] == 'ls':
+        optimizer_params = optimizer_params_ls
+    elif params['loss_type'] == 'nll':
+        optimizer_params = optimizer_params_nll
 
     optimizer = {
         'LLC': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC']),
-        'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),  # Not with nll.
+        'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD'])}
+        'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD'])
+    }
 
     if params['loss_type'] == 'ls':
         optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
-    losses = trainrun.train(trainloader, optimizer['ProxDescent'], 10)
-    plot_loss_curve(losses)
-    testrun.test_nll(net, trainloader)
+    # losses = trainrun.train(trainloader, optimizer['ProxDescent'], 10)
+    # plot_loss_curve(losses)
+    # testrun.test_nll(net, trainloader)
 
-    # train_all(optimizer, trainloader, params)
+    train_all(optimizer, trainloader, params)
 
 
 def train_all(optimizer, trainloader, params):
     summary = {}
-    timer = deepsplitting.utils.timing.Timing()
+    timer = timing.Timing()
 
     for key, opt in optimizer.items():
-        timer.start()
-        losses = trainrun.train(trainloader, opt, 30)
-        timer.stop(key)
+        with timer(key):
+            losses = trainrun.train(trainloader, opt, 30)
 
         if params['loss_type'] == 'ls':
             testrun.test_ls(opt.net, trainloader, 2)

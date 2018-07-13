@@ -4,7 +4,7 @@ import torchvision
 from deepsplitting.data.misc import get_sampler
 
 
-def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='../data', target_transform=None):
+def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='data', target_transform=None):
     def flatten(img):
         return torch.reshape(img, (-1,))
 
