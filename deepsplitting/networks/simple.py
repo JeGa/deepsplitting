@@ -41,6 +41,42 @@ class SimpleConvNet(torch.nn.Module):
         return self.criterion(self(inputs), labels)
 
 
+class SimpleSmallConvNet(torch.nn.Module):
+    """
+    From pytorch tutorial.
+
+    Input: (3,32,32) image.
+    Output: 10 classes.
+    """
+
+    def __init__(self, h, criterion):
+        super(SimpleSmallConvNet, self).__init__()
+
+        self.output_dim = 10
+
+        self.conv1 = torch.nn.Conv2d(3, 3, 5)
+        self.pool = torch.nn.MaxPool2d(2, 2)
+
+        self.fc1 = torch.nn.Linear(3 * 14 * 14, 42)
+        self.fc2 = torch.nn.Linear(42, self.output_dim)
+
+        self.h = h
+        self.criterion = criterion
+
+    def forward(self, x):
+        x = self.pool(self.h(self.conv1(x)))
+
+        x = x.view(-1, 3 * 14 * 14)
+
+        x = self.h(self.fc1(x))
+        x = self.fc2(x)
+
+        return x
+
+    def loss(self, inputs, labels):
+        return self.criterion(self(inputs), labels)
+
+
 class SimpleFFNet(torch.nn.Module):
     def __init__(self, layers, h, criterion):
         super(SimpleFFNet, self).__init__()

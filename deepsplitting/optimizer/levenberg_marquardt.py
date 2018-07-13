@@ -6,7 +6,7 @@ from .base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams=Hyperparams(M=0.001, factor=10)):
+    def __init__(self, net, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
 
         if not isinstance(self.net.criterion, torch.nn.MSELoss):

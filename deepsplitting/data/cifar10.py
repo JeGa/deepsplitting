@@ -11,7 +11,13 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
     Load CIFAR10 data set. Data is always sampled in the same order and full batch.
     Default normalization is to the range [-1, 1].
     """
-    transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+
+    class To64fTensor:
+        def __call__(self, x):
+            tensor = torchvision.transforms.ToTensor()(x)
+            return tensor.double()
+
+    transform = torchvision.transforms.Compose([To64fTensor(),
                                                 normalize_transform])
 
     trainset = torchvision.datasets.CIFAR10(root=folder, train=True, download=True, transform=transform)

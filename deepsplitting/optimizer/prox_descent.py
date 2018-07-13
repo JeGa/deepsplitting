@@ -7,7 +7,7 @@ from .base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams=Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3)):
+    def __init__(self, net, hyperparams):
         super().__init__(net, hyperparams)
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:

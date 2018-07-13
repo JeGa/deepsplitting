@@ -34,12 +34,16 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     params = {
-        'loss_type': 'ls',  # 'ls' or 'nll'.
+        'loss_type': 'nll',  # 'ls' or 'nll'.
         'activation_type': 'relu',  # 'relu' or 'sigmoid'.
         'resutls_folder': '../results'
     }
 
-    net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'], params['activation_type'])
+    # net, trainloader, training_batch_size, classes = initializer.cnn_cifar10(params['loss_type'],
+    #                                                                         params['activation_type'])
+
+    net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'],
+                                                                   params['activation_type'])
 
     if params['loss_type'] == 'ls':
         optimizer_params = optimizer_params_ls
@@ -56,7 +60,7 @@ def main():
     if params['loss_type'] == 'ls':
         optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
-    # losses = trainrun.train(trainloader, optimizer['ProxDescent'], 10)
+    # losses = trainrun.train(trainloader, optimizer['LLC'], 10)
     # plot_loss_curve(losses)
     # testrun.test_nll(net, trainloader)
 
@@ -80,7 +84,8 @@ def train_all(optimizer, trainloader, params):
 
         summary[key] = losses
 
-    plot_summary(summary, timer, title='Loss: ' + params['loss_type'] + ', activation: ' + params['activation_type'])
+    plot_summary(summary, timer, name='results',
+                 title='Loss: ' + params['loss_type'] + ', activation: ' + params['activation_type'])
 
 
 if __name__ == '__main__':

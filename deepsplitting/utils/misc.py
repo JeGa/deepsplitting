@@ -1,5 +1,6 @@
 import torchvision
 import torch
+import os.path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -55,7 +56,7 @@ def plot_loss_curve(losses, title=''):
     plt.show()
 
 
-def plot_summary(summary, timer, title=''):
+def plot_summary(summary, timer, name, title='', folder='results'):
     plt.figure()
 
     plt.title(title)
@@ -67,7 +68,7 @@ def plot_summary(summary, timer, title=''):
     plt.xlabel('Iteration')
     plt.ylabel('Objective')
 
-    plt.show()
+    plt.savefig(os.path.join(folder, name + '.pdf'), bbox_inches='tight')
 
 
 def cifarshow():

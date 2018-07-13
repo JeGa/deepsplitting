@@ -3,7 +3,7 @@ from .base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams=Hyperparams(beta=0.5, gamma=10 ** -4)):
+    def __init__(self, net, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
 
     def step(self, inputs, labels):

@@ -3,14 +3,17 @@
 import numpy as np
 import torch
 import logging
+import scipy
 
 from .base import BaseOptimizer
 from .base import Hyperparams
 from .misc import prox_cross_entropy
 
+from IPython import embed
+
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, N, hyperparams=Hyperparams(M=0.001, factor=10, rho=1)):
+    def __init__(self, net, N, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
 
         if type(self.net.criterion) is torch.nn.CrossEntropyLoss:
@@ -112,7 +115,12 @@ class Optimizer(BaseOptimizer):
         r = self.v - self.lam / self.hyperparams.rho - y
         r = torch.reshape(r, (-1, 1)).data.numpy()
 
-        A = J.T.dot(J) + self.hyperparams.M * np.eye(J.shape[1])
+        # X = J.T.dot(J)
+        # Y = self.hyperparams.M * scipy.sparse.eye(J.shape[1])
+
+        # embed()
+
+        A = J.T.dot(J) + self.hyperparams.M * scipy.sparse.eye(J.shape[1])
         B = J.T.dot(r)
 
         s = np.linalg.solve(A, B)
