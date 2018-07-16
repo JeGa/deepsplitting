@@ -49,7 +49,7 @@ class Optimizer(BaseOptimizer):
     def start_eval(self, inputs, labels):
         return self.net.loss(inputs, labels)
 
-    def init(self, debug=False):
+    def init(self, inputs, labels, debug=False):
         super(Optimizer, self).init_parameters(debug)
 
         self.M = self.hyperparams.M

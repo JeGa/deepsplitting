@@ -97,13 +97,27 @@ class SimpleFFNet(torch.nn.Module):
         self.criterion = criterion
         self.layer_size = layers
 
+        self.z = []
+        self.a = []
+
     def forward(self, x):
+        self.z = []
+        self.a = []
+
         for i in range(len(self.fclayers)):
-            x = self.h(self.fclayers[i](x))
+            if i == 0:
+                zi = self.fclayers[i](x)
+            else:
+                zi = self.fclayers[i](self.a[-1])
+            ai = self.h(zi)
 
-        x = self.linear_layer(x)
+            self.z.append(zi)
+            self.a.append(ai)
 
-        return x
+        zL = self.linear_layer(self.a[-1])
+        self.z.append(zL)
+
+        return zL
 
     def loss(self, inputs, labels):
         return self.criterion(self(inputs), labels)

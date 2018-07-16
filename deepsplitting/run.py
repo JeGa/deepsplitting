@@ -5,6 +5,7 @@ import deepsplitting.optimizer.gradient_descent_armijo as GDA
 import deepsplitting.optimizer.llc as LLC
 import deepsplitting.optimizer.prox_descent as ProxDescent
 import deepsplitting.optimizer.levenberg_marquardt as LM
+import deepsplitting.optimizer.proxprop as ProxProp
 
 import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
@@ -15,18 +16,20 @@ from deepsplitting.utils.misc import *
 from deepsplitting.optimizer.base import Hyperparams
 
 optimizer_params_ls = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=1),
+    'LLC': Hyperparams(M=0.001, factor=10, rho=40, rho_add=1),
     'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
     'LM': Hyperparams(M=0.001, factor=10),
     'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
-    'GD': Hyperparams(lr=0.0005)
+    'GD': Hyperparams(lr=0.0005),
+    'ProxProp': Hyperparams(tau=0.005, tau_theta=10)
 }
 
 optimizer_params_nll = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=1),
+    'LLC': Hyperparams(M=0.001, factor=10, rho=35, rho_add=1),
     'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
     'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
-    'GD': Hyperparams(lr=0.005)
+    'GD': Hyperparams(lr=0.005),
+    'ProxProp': Hyperparams(tau=0.005, tau_theta=10)
 }
 
 
@@ -34,7 +37,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     params = {
-        'loss_type': 'nll',  # 'ls' or 'nll'.
+        'loss_type': 'ls',  # 'ls' or 'nll'.
         'activation_type': 'relu',  # 'relu' or 'sigmoid'.
         'resutls_folder': '../results'
     }
@@ -54,14 +57,15 @@ def main():
         'LLC': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC']),
         'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD'])
+        'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
+        'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
     }
 
     if params['loss_type'] == 'ls':
         optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
-    # losses = trainrun.train(trainloader, optimizer['LLC'], 10)
-    # plot_loss_curve(losses)
+    #losses = trainrun.train(trainloader, optimizer['LLC'], 10)
+    #plot_loss_curve(losses)
     # testrun.test_nll(net, trainloader)
 
     train_all(optimizer, trainloader, params)

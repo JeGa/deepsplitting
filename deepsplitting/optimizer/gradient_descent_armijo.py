@@ -48,5 +48,5 @@ class Optimizer(BaseOptimizer):
 
         return False
 
-    def init(self, debug=False):
+    def init(self, inputs, labels, debug=False):
         super(Optimizer, self).init_parameters(debug)

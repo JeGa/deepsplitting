@@ -29,7 +29,7 @@ class BaseOptimizer:
 
         self.net.apply(init_fun)
 
-    def init(self, debug=False):
+    def init(self, inputs, labels, debug=False):
         raise NotImplementedError
 
     def step(self, inputs, labels):

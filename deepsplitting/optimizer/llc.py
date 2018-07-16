@@ -1,4 +1,5 @@
 # TODO: No regularizer currently!
+# TODO: Init variables v from forward pass.
 
 import numpy as np
 import torch
@@ -6,10 +7,7 @@ import logging
 import scipy
 
 from .base import BaseOptimizer
-from .base import Hyperparams
 from .misc import prox_cross_entropy
-
-from IPython import embed
 
 
 class Optimizer(BaseOptimizer):
@@ -25,6 +23,9 @@ class Optimizer(BaseOptimizer):
 
         self.N = N
 
+        self.lam = None
+        self.v = None
+
         self.init_variables()
 
     def init_variables(self, debug=False):
@@ -35,13 +36,13 @@ class Optimizer(BaseOptimizer):
         else:
             self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.double)
 
-    def init(self, debug=False):
+    def init(self, inputs, labels, debug=False):
         super(Optimizer, self).init_parameters(debug)
 
         self.init_variables(debug)
 
     def step(self, inputs, labels):
-        L_data_current = self.eval(inputs, labels)
+        L_data_current, Lagrangian_current = self.eval(inputs, labels)
 
         self.primal2_levmarq(inputs, labels)
 
@@ -49,9 +50,10 @@ class Optimizer(BaseOptimizer):
 
         self.dual(inputs)
 
-        self.hyperparams.rho = min(1, self.hyperparams.rho + 0.1)
+        L_data_new, Lagrangian_new = self.eval(inputs, labels)
 
-        L_data_new = self.eval(inputs, labels)
+        if Lagrangian_new > Lagrangian_current:
+            self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
 
         return L_data_current.item(), L_data_new.item()
 
@@ -63,7 +65,7 @@ class Optimizer(BaseOptimizer):
                 "Data Loss = {:.8f}, Loss = {:.8f}, Constraint norm = {:.8f}, Lagrangian = {:.8f}".format(
                     L_data, loss, constraint_norm, L))
 
-        return L_data
+        return L_data, L
 
     def augmented_lagrangian(self, inputs, labels, params=None):
         if params is not None:

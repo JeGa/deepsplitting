@@ -18,5 +18,5 @@ class Optimizer(BaseOptimizer):
 
         return loss.item(), self.net.loss(inputs, labels).item()
 
-    def init(self, debug=False):
+    def init(self, inputs, labels, debug=False):
         super(Optimizer, self).init_parameters(debug)
