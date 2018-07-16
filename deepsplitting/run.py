@@ -64,20 +64,22 @@ def main():
     if params['loss_type'] == 'ls':
         optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
-    #losses = trainrun.train(trainloader, optimizer['LLC'], 10)
-    #plot_loss_curve(losses)
+    # losses = trainrun.train(trainloader, optimizer['LLC'], 10)
+    # plot_loss_curve(losses)
     # testrun.test_nll(net, trainloader)
 
-    train_all(optimizer, trainloader, params)
+    net_init_parameters = next(iter(optimizer.values())).save_params()
+
+    train_all(optimizer, trainloader, params, net_init_parameters)
 
 
-def train_all(optimizer, trainloader, params):
+def train_all(optimizer, trainloader, params, net_init_parameters):
     summary = {}
     timer = timing.Timing()
 
     for key, opt in optimizer.items():
         with timer(key):
-            losses = trainrun.train(trainloader, opt, 30)
+            losses = trainrun.train(trainloader, opt, 30, net_init_parameters)
 
         if params['loss_type'] == 'ls':
             testrun.test_ls(opt.net, trainloader, 2)

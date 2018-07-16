@@ -8,6 +8,7 @@ import scipy
 
 from .base import BaseOptimizer
 from .misc import prox_cross_entropy
+from .base import Initializer
 
 
 class Optimizer(BaseOptimizer):
@@ -26,20 +27,20 @@ class Optimizer(BaseOptimizer):
         self.lam = None
         self.v = None
 
-        self.init_variables()
+        self.init_variables(Initializer.RANDN)
 
-    def init_variables(self, debug=False):
+    def init_variables(self, initializer):
         self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.double)
 
-        if debug:
+        if initializer is Initializer.DEBUG:
             self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.double)
         else:
             self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.double)
 
-    def init(self, inputs, labels, debug=False):
-        super(Optimizer, self).init_parameters(debug)
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer, self).init_parameters(initializer, parameters)
 
-        self.init_variables(debug)
+        self.init_variables(initializer)
 
     def step(self, inputs, labels):
         L_data_current, Lagrangian_current = self.eval(inputs, labels)

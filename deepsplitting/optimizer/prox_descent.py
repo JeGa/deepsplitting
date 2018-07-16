@@ -61,8 +61,8 @@ class Optimizer(BaseOptimizer):
 
         return loss + reg
 
-    def init(self, inputs, labels, debug=False):
-        super(Optimizer, self).init_parameters(debug)
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer, self).init_parameters(initializer, parameters)
 
         self.mu = self.hyperparams.mu_min
 

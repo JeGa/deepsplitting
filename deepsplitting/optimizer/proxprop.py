@@ -19,8 +19,8 @@ class Optimizer(BaseOptimizer):
     def init_variables(self, inputs, labels):
         self.net(inputs)
 
-    def init(self, inputs, labels, debug=False):
-        super(Optimizer, self).init_parameters(debug)
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer, self).init_parameters(initializer, parameters)
 
         self.init_variables(inputs, labels)
 

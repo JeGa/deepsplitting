@@ -1,7 +1,8 @@
 import logging
+from deepsplitting.optimizer.base import Initializer
 
 
-def train(trainloader, optimizer, epochs):
+def train(trainloader, optimizer, epochs, params=None):
     losses = list()
 
     log_iter = 1
@@ -9,7 +10,7 @@ def train(trainloader, optimizer, epochs):
     # Only full batch.
     inputs, labels = iter(trainloader).next()
 
-    optimizer.init(inputs, labels, debug=False)
+    optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
 
     for epoch in range(epochs):
         optimizer.zero_grad()

@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from enum import Enum, auto
 
 
 class Hyperparams:
@@ -7,29 +8,44 @@ class Hyperparams:
         self.__dict__.update(params)
 
 
+class Initializer(Enum):
+    RANDN = auto()
+    DEBUG = auto()
+    FROM_PARAMS = auto()
+
+
 class BaseOptimizer:
     def __init__(self, net, hyperparams):
         self.net = net
         self.hyperparams = hyperparams
 
-        self.init_parameters()
+        self.init_parameters(Initializer.RANDN)
 
-    def init_parameters(self, debug=False):
-        def init_fun(submodule):
-            if type(submodule) == torch.nn.Linear:
-                if debug:
+    def init_parameters(self, initializer, parameters=None):
+        if initializer is Initializer.FROM_PARAMS and parameters is None:
+            raise ValueError("No parameters list given.")
+
+        if initializer is Initializer.DEBUG:
+            def init_fun(submodule):
+                if type(submodule) == torch.nn.Linear:
                     submodule.weight.data.fill_(1)
                     submodule.bias.data.fill_(1)
-                else:
+
+            self.net.apply(init_fun)
+        elif initializer is Initializer.RANDN:
+            def init_fun(submodule):
+                if type(submodule) == torch.nn.Linear:
                     torch.nn.init.normal_(submodule.weight)
                     torch.nn.init.normal_(submodule.bias)
 
                     submodule.weight.data.mul_(0.1)
                     submodule.bias.data.mul_(0.1)
 
-        self.net.apply(init_fun)
+            self.net.apply(init_fun)
+        elif initializer is Initializer.FROM_PARAMS:
+            self.restore_params(parameters)
 
-    def init(self, inputs, labels, debug=False):
+    def init(self, inputs, labels, initializer, parameters=None):
         raise NotImplementedError
 
     def step(self, inputs, labels):
