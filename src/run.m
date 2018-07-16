@@ -8,10 +8,24 @@ addpath(genpath('baseline'));
 % Classification: spirals, Regression: reg_sinus.
 [X_train, y_train, X_test, y_test, dim, classes] = helper.get_data(1, 'spirals', false, 1);
 
+subset = -5;
+
+if subset > 0
+    % If only a subset is required.
+    samples = size(X_train, subset);
+    X_train = X_train(:,1:samples);
+    y_train = y_train(:,1:samples);
+end
+
+% helper.save_to_csv(X_train', y_train', X_test', y_test', 'datasets_raw/binary_spirals');
+
 %%
 
 activation_type = 2; % 1 = sigmoid, 2 = relu.
-loss_type = 2; % 1 = LS, 2 = NLLsm.
+loss_type = 1; % 1 = LS, 2 = NLLsm.
+
+global DEBUG
+DEBUG = false;
 
 % Define network architecture.
 layers = [dim, 12, 12, 12, classes];
@@ -19,23 +33,23 @@ layers = [dim, 12, 12, 12, classes];
 
 N = size(y_train, 2);
 
-loss = get_loss(loss_type);
+loss = get_loss(loss_type, N);
 
 networks = {
     GDNetwork(layers, h, dh, loss, X_train), 'GD';
-    LLCNetwork(layers, h, dh, loss, X_train), 'LLC';
-    ProxDescentNetwork(layers, h, dh, loss, X_train), 'ProxDescent';
-    ProxPropNetwork(layers, h, dh, loss, X_train), 'ProxProp'; % TODO: Armijo.
+    LLCNetwork(layers, h, dh, loss, X_train), 'LLC'; % TODO: Add regularizer (see class def file).
+    ProxDescentNetwork(layers, h, dh, loss, X_train), 'ProxDescent'; % TODO: No matlab solver (see class def file).
+    ProxPropNetwork(layers, h, dh, loss, X_train), 'ProxProp'; % TODO: Armijo (see class def file).
 };
 
 if loss_type == 1
-   networks(end,:) = {LMNetwork(layers, h, dh, loss, X_train), 'LM'};
+   networks(end+1,:) = {LMNetwork(layers, h, dh, loss, X_train), 'LM'};
 end
 
-train(networks{4,1}, X_train, y_train, networks{4,2}, loss_type, activation_type);
+train(networks{2,1}, X_train, y_train, networks{2,2}, loss_type, activation_type);
 %train_all(networks, X_train, y_train, loss_type, activation_type);
 
-results = load_results(networks);
+%results = load_results(networks);
 
 %plot_grid(network);
 
@@ -59,7 +73,7 @@ function results = load_results(networks)
 
     results = cell(1, size(types, 2));
 
-    figure;
+    figure(1);
     title('Spiral data set.');
     xlabel('Iteration');
     ylabel('Objective');
@@ -71,10 +85,21 @@ function results = load_results(networks)
         loss_type = getLossFromType(res.loss_type);
         activation_type = getActivationFromType(res.activation_type);
         
+        figure('visible','off');
+        title(types{i});
+        xlabel('Iteration');
+        ylabel('Objective');
+        plot(res.losses);
+        saveas(gcf, join([folder, types{i}, '.png']))
+        
+        figure(1)
         hold on
         plot(res.losses, 'DisplayName', ...
             join([types{i}, '(', num2str(res.time), 's, ', loss_type, ', ', activation_type, ')']));
     end
+    
+    xlabel('Iteration');
+    ylabel('Loss');
     
     hold off
     legend
@@ -95,17 +120,22 @@ function [losses, misclassified] = train(network, X_train, y_train, type, loss_t
        error('Unknown loss type.')
     end
     
+    helper.plot_result_cls(X_train, y, 10)
+    
     misclassified = helper.results_cls(y, y_train);
+    
+    disp(join(['Misclassified: ', num2str(misclassified)]));
 
     save(join([folder, 'losses_', type, '.mat']), 'losses', 'misclassified', 'time', 'loss_type', 'activation_type');
 end
 
-function loss = get_loss(type)
+function loss = get_loss(type, N)
     if type == 1
         loss = LeastSquares(1);
-        % TODO: N scaling factor... % TODO: Bad with 1/N scaling and LS loss.
+        % TODO: Bad with 1/N scaling and LS loss.
     elseif type == 2
         loss = NLLSoftmax();
+        % TODO: 1/N scaling.
     else
         error('Unknown loss type.')
     end

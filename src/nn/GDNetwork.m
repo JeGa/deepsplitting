@@ -27,8 +27,8 @@ classdef GDNetwork < Network
                         sW, sb, X_train, y_train, params.gamma, params.eta, params.beta);
                 end
                 
-                if mod(i, 50) == 0
-                    disp(['Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ...
+                if mod(i, 20) == 0
+                    disp(['GD: Loss: ', num2str(L), ', stepsize: ', num2str(stepsize), ...
                         ' gradnorm: ', num2str(norm(obj.to_vec(dW, db, 2))) ,' (', num2str(i), '/', num2str(params.iterations),')']);
                 end
                 
@@ -38,9 +38,9 @@ classdef GDNetwork < Network
             end
             
             [obj, L, ~] = obj.f(X_train, y_train);
-            disp(['Loss: ', num2str(L)]);
+            disp(['GD: Final loss: ', num2str(L)]);
             
-            %losses = [losses(2:end),L];
+            losses = [losses,L];
         end
     end
     

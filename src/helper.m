@@ -18,16 +18,16 @@ classdef helper
                 %params.eta = 0.7;
                 %params.beta = 4;
                 
-                params.iterations = 500;
+                params.iterations = 4000;
             elseif strcmp(p, 'LLC')
                 % 1 = fixed stepsize, 2 = Armijo.
 
                 %params.linesearch = 1;
                 %params.stepsize = 0.001;
 
-                params.linesearch = 2;
-                params.beta = 0.5;
-                params.gamma = 10^-4;
+                %params.linesearch = 2;
+                %params.beta = 0.5;
+                %params.gamma = 10^-4;
 
                 % LM damping factor.
                 params.M = 0.001;
@@ -42,7 +42,7 @@ classdef helper
                 % Initial regularizer weight.
                 params.mu_min = 0.3;
                 
-                params.iterations = 15;
+                params.iterations = 80;
             elseif strcmp(p, 'LM')
                 % LM Damping factor.
                 params.M = 0.001;
@@ -50,7 +50,8 @@ classdef helper
                 
                 params.iterations = 50;
             elseif strcmp(p, 'ProxProp')
-                params.tau = 1;
+                %params.tau = 1;
+                params.tau = 0.005;
                 params.tau_theta = 10;
                 
                 params.iterations = 500;
@@ -207,6 +208,13 @@ classdef helper
 
         function y = predict_ls(network, X)
             [~, y] = network.fp(X);
+        end
+        
+        function save_to_csv(X_train, y_train, X_test, y_test, name)
+            csvwrite(strcat(name, '_X_train'), X_train);
+            csvwrite(strcat(name, '_y_train'), y_train);
+            csvwrite(strcat(name, '_X_test'), X_test);
+            csvwrite(strcat(name, '_y_test'), y_test);
         end
     end
 end

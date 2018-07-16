@@ -1,3 +1,5 @@
+% TODO: Add armijo linesearch.
+
 classdef ProxPropNetwork < Network
     methods
         function obj = ProxPropNetwork(layers, h, dh, loss, X_train)
@@ -16,15 +18,15 @@ classdef ProxPropNetwork < Network
                 
                 data_loss = obj.loss.loss(y, y_train);
                 
-                disp(['Loss = ', num2str(data_loss), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                disp(['ProxProp: Loss = ', num2str(data_loss), ' (', num2str(i), '/', num2str(params.iterations), ')']);
                 
                 losses(i) = data_loss;
             end
             
             [obj, L, ~] = obj.f(X_train, y_train);
-            disp(['Loss: ', num2str(L)]);
+            disp(['ProxProp: Final loss: ', num2str(L)]);
             
-            %losses = [losses(2:end),L];
+            losses = [losses,L];
         end
     end
     

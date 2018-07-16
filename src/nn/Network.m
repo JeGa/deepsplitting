@@ -27,11 +27,17 @@ classdef Network
             obj.loss = loss;
             
             rng(123);
+            global DEBUG
             
             % Initialize network weights.
             for l=1:L
-                obj.W{l} = 0.1 * randn(layers(l+1), layers(l));
-                obj.b{l} = 0.1 * randn(layers(l+1), 1);
+                if DEBUG
+                    obj.W{l} = ones(layers(l+1), layers(l));
+                    obj.b{l} = ones(layers(l+1), 1);
+                else
+                    obj.W{l} = 0.1 * randn(layers(l+1), layers(l));
+                    obj.b{l} = 0.1 * randn(layers(l+1), 1);
+                end
             end
             
             % Perform a forward pass to find a feasible initialization of all variables.

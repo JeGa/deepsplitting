@@ -1,3 +1,5 @@
+% TODO: Do not use matlab fminunc for nll minimize_linearized_penalty.
+
 classdef ProxDescentNetwork < Network   
     methods
         function obj = ProxDescentNetwork(layers, h, dh, loss, X_train)
@@ -14,6 +16,8 @@ classdef ProxDescentNetwork < Network
             
             [~, L_start, ~] = obj.f(X_train, y_train);
             start_loss = L_start;
+            
+            disp(['ProxDescent: Loss: ', num2str(start_loss)]);
             
             for i = 1:params.iterations
                 [obj, J, y] = obj.jacobian_noloss_matrix(X_train);
@@ -46,12 +50,12 @@ classdef ProxDescentNetwork < Network
                 obj.W = W_new;
                 obj.b = b_new;
                 
-                disp(['Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                disp(['ProxDescent: Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
                 
                 losses(i) = L_new;
             end
             
-            losses = [start_loss,losses(1:end-1)];
+            losses = [start_loss,losses];
         end
     end
     
@@ -60,8 +64,8 @@ classdef ProxDescentNetwork < Network
             % h(c(x) + grad(c(x))*d) + 0.5 * mu * norm(d)^2.
             % d: Vectorized weight and biases with
             % (weights in row-major layer 1 to L, biases layer 1 to L).
-            [N, c] = size(y_train);
-            lin = y + reshape(J*d, N, c);
+            [c, N] = size(y_train);
+            lin = y + reshape(J*d, c, N);
             
             loss = obj.loss.loss(lin, y_train);
             

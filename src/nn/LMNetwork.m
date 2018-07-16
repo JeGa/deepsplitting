@@ -20,6 +20,8 @@ classdef LMNetwork < Network
             [~, L_start, ~] = obj.f(X_train, y_train);
             start_loss = L_start;
             
+            disp(['LM: Loss: ', num2str(start_loss)]);
+            
             for i = 1:params.iterations
                 [~, dW, db, y] = obj.jacobian_eval_noloss(obj.W, obj.b, X_train);
                 J = obj.to_jacobian(dW, db);
@@ -41,12 +43,12 @@ classdef LMNetwork < Network
                     end
                 end
                 
-                disp(['Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
+                disp(['LM: Loss: ', num2str(L_new), ' (', num2str(i), '/', num2str(params.iterations), ')']);
                 
                 losses(i) = L_new;
             end
             
-            losses = [start_loss,losses(1:end-1)];
+            losses = [start_loss,losses];
         end
     end
     
