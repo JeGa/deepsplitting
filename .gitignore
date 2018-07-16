@@ -38,3 +38,6 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+
+__pycache__
+.idea
