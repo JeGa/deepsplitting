@@ -3,6 +3,7 @@ from torch.nn import functional as F
 import scipy
 
 from .base import BaseOptimizer
+import deepsplitting.optimizer.misc as misc
 
 
 class Optimizer(BaseOptimizer):
@@ -10,13 +11,14 @@ class Optimizer(BaseOptimizer):
         super().__init__(net, hyperparams)
 
         if self.net.h is F.relu:
-            self.h_grad = self.h_grad_relu
+            self.h_grad = misc.grad_relu
         elif self.net.h is F.sigmoid:
-            self.h_grad = self.h_grad_sigmoid
+            self.h_grad = misc.grad_sigmoid
         else:
             raise ValueError("Acivation not supported.")
 
     def init_variables(self, inputs, labels):
+        # Initialize non-linearities a and linearities z.
         self.net(inputs)
 
     def init(self, inputs, labels, initializer, parameters=None):
@@ -124,23 +126,9 @@ class Optimizer(BaseOptimizer):
 
         return g
 
-    def h_grad_relu(self, x):
-        """
-        :param x: (N, d)
-        :returns: J in matrix form (N, d).
-        """
-        return F.sigmoid(x).mul(1 - F.sigmoid(x))
-
-    def h_grad_sigmoid(self, x):
-        """
-        :param x: (N, d)
-        :returns: J in matrix form (N, d).
-        """
-        raise NotImplementedError
-        # return x > 0
-
+    @staticmethod
     def zero_grad_tensor(self, t):
-        # TODO: t.grad.detach_()
+        t.grad.detach_()
         t.grad.zero_()
 
     def J_phi(self, L):

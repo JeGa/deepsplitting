@@ -1,7 +1,7 @@
 import torchvision
 import torch
 import os.path
-
+import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -49,7 +49,7 @@ def plot_loss_curve(losses, title=''):
 
     plt.title(title)
 
-    plt.plot(losses)
+    plt.plot(losses, linewidth=1.0)
     plt.xlabel('Iteration')
     plt.ylabel('Objective')
 
@@ -57,12 +57,15 @@ def plot_loss_curve(losses, title=''):
 
 
 def plot_summary(summary, timer, name, title='', folder='results'):
+    marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
+
     plt.figure()
 
     plt.title(title)
 
     for key, losses in summary.items():
-        plt.plot(losses, label="{} {:.6f}s".format(key, timer.times[key]))
+        plt.plot(losses, label="{} {:.6f}s".format(key, timer.times[key]),
+                 linewidth=1.0, marker=next(marker), markevery=5, markerfacecolor='none')
 
     plt.legend()
     plt.xlabel('Iteration')

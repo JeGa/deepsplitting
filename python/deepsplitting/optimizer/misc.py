@@ -1,4 +1,5 @@
 import numpy as np
+from torch.nn import functional as F
 
 
 def prox_cross_entropy(q, tau, y):
@@ -31,8 +32,6 @@ def prox_cross_entropy(q, tau, y):
     return x
 
 
-# TODO: Checked.
-# lambertw_exp(np.array([[-0.576565155510187], [0.586943687333602]]))
 def lambertw_exp(X):
     """
     :param X: Numpy array of shape (c,1).
@@ -101,3 +100,19 @@ def bias_to_end(J, ls):
         from_index = to_index
 
     return np.concatenate(Jw + Jb, axis=1)
+
+
+def grad_relu(x):
+    """
+    :param x: (N, d)
+    :returns: J in matrix form (N, d).
+    """
+    return (x > 0.0).double()
+
+
+def grad_sigmoid(x):
+    """
+    :param x: (N, d)
+    :returns: J in matrix form (N, d).
+    """
+    return F.sigmoid(x).mul(1 - F.sigmoid(x))
