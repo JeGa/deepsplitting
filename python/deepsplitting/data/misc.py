@@ -1,5 +1,5 @@
 import torch
-
+import torchvision
 
 def get_sampler(N, dataset):
     if N == -1:
@@ -21,3 +21,9 @@ class SubsetSampler(torch.utils.data.sampler.Sampler):
 
     def __len__(self):
         return self.N
+
+
+class To64fTensor:
+    def __call__(self, x):
+        tensor = torchvision.transforms.ToTensor()(x)
+        return tensor.double()

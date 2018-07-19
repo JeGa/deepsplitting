@@ -63,9 +63,13 @@ def plot_summary(summary, timer, name, title='', folder='results'):
 
     plt.title(title)
 
+    every = 4
+
     for key, losses in summary.items():
         plt.plot(losses, label="{} {:.6f}s".format(key, timer.times[key]),
-                 linewidth=1.0, marker=next(marker), markevery=5, markerfacecolor='none')
+                 linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
+
+        every += 1
 
     plt.legend()
     plt.xlabel('Iteration')

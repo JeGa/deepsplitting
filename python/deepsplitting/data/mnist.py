@@ -2,13 +2,14 @@ import torch
 import torchvision
 
 from deepsplitting.data.misc import get_sampler
+from .misc import To64fTensor
 
 
 def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='data', target_transform=None):
     def flatten(img):
         return torch.reshape(img, (-1,))
 
-    input_transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+    input_transform = torchvision.transforms.Compose([To64fTensor(),
                                                       torchvision.transforms.Lambda(flatten)])
 
     if target_transform is not None:

@@ -19,41 +19,62 @@ def get_activation(activation_type):
     return activation
 
 
-def ff_mnist_vectorized(loss_type):
+def get_loss(loss_type):
+    if loss_type == 'ls':
+        loss = deepsplitting.losses.mse.WeightedMSELoss()
+    elif loss_type == 'nll':
+        loss = torch.nn.CrossEntropyLoss(size_average=False)
+    else:
+        raise ValueError("Unsupported loss type.")
+
+    return loss
+
+
+def ff_mnist_tf(loss_type):
     if loss_type == 'ls':
         def target_transform(target):
             return deepsplitting.utils.misc.one_hot(target, 10).squeeze()
 
         tf = target_transform
-        loss = torch.nn.MSELoss()
     elif loss_type == 'nll':
         tf = None
-        loss = torch.nn.CrossEntropyLoss()
     else:
         raise ValueError("Unsupported loss type.")
 
-    layers = [784, 10, 10]
-    activation = F.relu
-
-    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()
-    trainloader, testloader, training_batch_size, test_batch_size = \
-        deepsplitting.data.mnist.load_MNIST_vectorized(8, 8, target_transform=tf)
-
-    return net, trainloader, testloader, training_batch_size, test_batch_size
+    return tf
 
 
-def ff_spirals(loss_type, activation_type):
+def ff_spirals_tf(loss_type):
     if loss_type == 'ls':
         tf = None
-        loss = deepsplitting.losses.mse.WeightedMSELoss()
     elif loss_type == 'nll':
         def target_transform(target):
             return target.argmax()
 
         tf = target_transform
-        loss = torch.nn.CrossEntropyLoss(size_average=False)
     else:
         raise ValueError("Unsupported loss type.")
+
+    return tf
+
+
+def ff_mnist_vectorized(loss_type, activation_type):
+    tf = ff_mnist_tf(loss_type)
+    loss = get_loss(loss_type)
+
+    layers = [784, 10]
+    activation = get_activation(activation_type)
+
+    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()
+    trainloader, testloader, training_batch_size, test_batch_size = \
+        deepsplitting.data.mnist.load_MNIST_vectorized(-1, 8, target_transform=tf)
+
+    return net, trainloader, testloader, training_batch_size, test_batch_size
+
+
+def ff_spirals(loss_type, activation_type):
+    tf = ff_spirals_tf(loss_type)
+    loss = get_loss(loss_type)
 
     layers = [2, 12, 12, 12, 2]
 

@@ -121,3 +121,27 @@ class SimpleFFNet(torch.nn.Module):
 
     def loss(self, inputs, labels):
         return self.criterion(self(inputs), labels)
+
+    def weights(self, L):
+        """
+        Returns the weight matrix of layer L.
+        """
+        params = self.parameters()
+
+        return list(params)[L + L]
+
+    def bias(self, L):
+        """
+        Returns the bias vector of layer L.
+        """
+        params = self.parameters()
+
+        return list(params)[L + L + 1]
+
+    def set_weights(self, L, new_weight):
+        with torch.no_grad():
+            self.weights(L).copy_(new_weight)
+
+    def set_bias(self, L, new_bias):
+        with torch.no_grad():
+            self.bias(L).copy_(new_bias)

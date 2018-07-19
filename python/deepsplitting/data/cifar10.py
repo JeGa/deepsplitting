@@ -2,6 +2,7 @@ import torch
 import torchvision
 
 from deepsplitting.data.misc import get_sampler
+from .misc import To64fTensor
 
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
@@ -11,12 +12,6 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
     Load CIFAR10 data set. Data is always sampled in the same order and full batch.
     Default normalization is to the range [-1, 1].
     """
-
-    class To64fTensor:
-        def __call__(self, x):
-            tensor = torchvision.transforms.ToTensor()(x)
-            return tensor.double()
-
     transform = torchvision.transforms.Compose([To64fTensor(),
                                                 normalize_transform])
 
