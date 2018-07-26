@@ -107,7 +107,7 @@ def grad_relu(x):
     :param x: (N, d)
     :returns: J in matrix form (N, d).
     """
-    return (x > 0.0).double()
+    return (x > 0.0).float()
 
 
 def grad_sigmoid(x):

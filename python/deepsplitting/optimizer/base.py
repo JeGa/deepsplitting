@@ -92,14 +92,39 @@ class BaseOptimizer:
 
         return J
 
+    def jacobian_torch(self, y):
+        """
+        :param y: Shape (N, c).
+        :return: J with shape (N*c, size(params)).
+        """
+        self.net.zero_grad()
+
+        ysize = y.numel()
+        J = torch.empty(ysize, self.numparams())
+
+        for i, yi in enumerate(y):  # Samples.
+            for j, c in enumerate(yi):  # Classes.
+                c.backward(retain_graph=True)
+
+                start_index = 0
+                for p in self.net.parameters():
+                    J[i * y.size()[1] + j, start_index:start_index + p.numel()] = torch.reshape(p.grad, (-1,))
+
+                    start_index += p.numel()
+
+                self.net.zero_grad()
+
+        return J
+
     def numparams(self):
         return sum(p.numel() for p in self.net.parameters())
 
-    def vec_to_params_update(self, s):
+    def vec_to_params_update(self, s, from_numpy=True):
         """
-        Extracts the network parameters from the numpy vector s, adds them to the current parameters and returns them.
+        Extracts the network parameters from the vector s, adds them to the current parameters and returns them.
 
-        :param s: Numpy vector.
+        :param s: Input vector.
+        :param from_numpy: If true, s is a numpy vector, else a torch vector.
         :return: List of the torch tensor network parameters.
         """
         param_list = []
@@ -107,7 +132,11 @@ class BaseOptimizer:
         start_index = 0
         for p in self.net.parameters():
             with torch.no_grad():
-                params = torch.from_numpy(s[start_index:start_index + p.numel()])
+                if from_numpy:
+                    params = torch.from_numpy(s[start_index:start_index + p.numel()])
+                else:
+                    params = s[start_index:start_index + p.numel()]
+
                 params_rs = torch.reshape(params, p.size())
                 param_list.append(p + params_rs)
 

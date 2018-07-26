@@ -1,5 +1,4 @@
 # TODO: No regularizer currently!
-# TODO: Init variables v from forward pass.
 
 import numpy as np
 import torch
@@ -42,9 +41,7 @@ class Optimizer(BaseOptimizer):
 
         self.init_variables(initializer)
 
-        # Init z and a.
-        if inputs is not None:
-            self.net(inputs)
+        self.step_init(inputs, labels)
 
     def step_init(self, inputs, labels):
         # Init z and a.
@@ -53,7 +50,7 @@ class Optimizer(BaseOptimizer):
     def step(self, inputs, labels):
         L_data_current, Lagrangian_current = self.eval(inputs, labels)
 
-        self.primal2_levmarq(inputs, labels)
+        self.primal2_cg(inputs, labels)
 
         self.primal1(inputs, labels)
 
@@ -122,20 +119,61 @@ class Optimizer(BaseOptimizer):
             if i == max_iter:
                 break
 
+    def primal2_cg(self, inputs, labels):
+        i = 0
+        max_iter = 1
+
+        while True:
+            i += 1
+
+            y = self.net(inputs)
+            J = self.jacobian_torch(y)
+
+            params = self.cg_step(J, y)
+            self.restore_params(params)
+
+            if i == max_iter:
+                break
+
+    def cg_step(self, J, y):
+        j = 0
+        max_iter = 8
+
+        R = self.v - self.lam / self.hyperparams.rho - y
+        R = torch.reshape(R, (-1, 1))
+
+        # Solve for x: (J.T*J)*x - R.T*J
+
+        b = J.t().matmul(R)
+        x = torch.zeros(J.size(1), 1)
+
+        r = b - J.t().matmul(J.matmul(x))
+        p = r
+
+        while True:
+            j += 1
+
+            alpha = (r.t().matmul(r)) / (p.t().matmul(J.t().matmul(J.matmul(p))))
+
+            x = x + alpha * p
+            r_new = r - alpha * J.t().matmul(J.matmul(p))
+
+            beta = (r_new.t().matmul(r_new)) / (r.t().matmul(r))
+            p = r_new + beta * p
+
+            r = r_new
+
+            if j == max_iter:
+                return self.vec_to_params_update(x, from_numpy=False)
+
     def levmarq_step(self, J, y):
         r = self.v - self.lam / self.hyperparams.rho - y
         r = torch.reshape(r, (-1, 1)).data.numpy()
-
-        # X = J.T.dot(J)
-        # Y = self.hyperparams.M * scipy.sparse.eye(J.shape[1])
-
-        # embed()
 
         A = J.T.dot(J) + self.hyperparams.M * scipy.sparse.eye(J.shape[1])
         B = J.T.dot(r)
 
         s = np.linalg.solve(A, B)
-
         s = np.float32(s)
 
         param_list = self.vec_to_params_update(s)
