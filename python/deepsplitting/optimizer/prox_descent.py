@@ -23,8 +23,11 @@ class Optimizer(BaseOptimizer):
         y = self.net(inputs)
         J = self.jacobian(y)
 
+        J = np.float32(J) # TODO: float
+
         while True:
             d = self.minimize_linearized_penalty(J, y.detach().numpy(), labels.numpy(), self.mu, self.net.criterion)
+            d = np.float32(d) # TODO: float
             new_params = self.vec_to_params_update(d)
 
             # With current parameters.

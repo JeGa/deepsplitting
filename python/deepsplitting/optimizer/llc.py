@@ -30,17 +30,25 @@ class Optimizer(BaseOptimizer):
         self.init_variables(Initializer.RANDN)
 
     def init_variables(self, initializer):
-        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.double)
+        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.float)
 
         if initializer is Initializer.DEBUG:
-            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.double)
+            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.float)
         else:
-            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.double)
+            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.float)
 
     def init(self, inputs, labels, initializer, parameters=None):
         super(Optimizer, self).init_parameters(initializer, parameters)
 
         self.init_variables(initializer)
+
+        # Init z and a.
+        if inputs is not None:
+            self.net(inputs)
+
+    def step_init(self, inputs, labels):
+        # Init z and a.
+        self.v = self.net(inputs)
 
     def step(self, inputs, labels):
         L_data_current, Lagrangian_current = self.eval(inputs, labels)
@@ -128,6 +136,8 @@ class Optimizer(BaseOptimizer):
 
         s = np.linalg.solve(A, B)
 
+        s = np.float32(s)
+
         param_list = self.vec_to_params_update(s)
 
         return param_list
@@ -152,7 +162,7 @@ def primal1_ls(y, lam, y_train, rho, loss):
 
 
 def primal1_nll(y, lam, y_train, rho, loss):
-    z = torch.zeros(y.size(), dtype=torch.double)
+    z = torch.zeros(y.size(), dtype=torch.float)
 
     r = y + lam / rho
 

@@ -38,7 +38,7 @@ def one_hot(x, classes):
     else:
         N = 1
 
-    onehot = torch.zeros((N, classes), dtype=torch.float64)
+    onehot = torch.zeros((N, classes), dtype=torch.float)
     onehot[list(range(N)), x] = 1
 
     return onehot

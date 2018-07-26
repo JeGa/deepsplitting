@@ -33,8 +33,8 @@ class BinarySpirals(torch.utils.data.Dataset):
         return x, y
 
     def read_csv(self):
-        self.X_train = pd.read_csv(self.files['X_train'], header=None).values.astype('float64').reshape(-1, 2)
-        self.y_train = pd.read_csv(self.files['y_train'], header=None).values.astype('float64').reshape(-1, 2)
+        self.X_train = pd.read_csv(self.files['X_train'], header=None).values.astype('float32').reshape(-1, 2)
+        self.y_train = pd.read_csv(self.files['y_train'], header=None).values.astype('float32').reshape(-1, 2)
 
 
 def load_spirals(training_samples=-1, target_transform=None):

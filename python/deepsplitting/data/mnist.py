@@ -9,7 +9,7 @@ def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='data', t
     def flatten(img):
         return torch.reshape(img, (-1,))
 
-    input_transform = torchvision.transforms.Compose([To64fTensor(),
+    input_transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                       torchvision.transforms.Lambda(flatten)])
 
     if target_transform is not None:

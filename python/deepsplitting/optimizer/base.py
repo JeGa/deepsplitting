@@ -48,6 +48,12 @@ class BaseOptimizer:
     def init(self, inputs, labels, initializer, parameters=None):
         raise NotImplementedError
 
+    def step_init(self, inputs, labels):
+        """
+        Just in case there needs to be some init function before each step.
+        """
+        pass
+
     def step(self, inputs, labels):
         raise NotImplementedError
 

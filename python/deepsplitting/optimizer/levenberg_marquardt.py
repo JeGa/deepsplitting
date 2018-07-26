@@ -22,6 +22,7 @@ class Optimizer(BaseOptimizer):
 
         while True:
             s = self.levmarq_step(J, y.detach().numpy(), labels.numpy(), self.M)
+            s = np.float32(s) # TODO: float
             new_params = self.vec_to_params_update(s)
 
             old_params = self.save_params()

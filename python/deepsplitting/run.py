@@ -51,12 +51,12 @@ def main():
     # net, trainloader, training_batch_size, classes = initializer.cnn_cifar10(params['loss_type'],
     #                                                                         params['activation_type'])
 
-    # net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'],
-    #                                                               params['activation_type'])
+    net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'],
+                                                                   params['activation_type'])
 
-    net, trainloader, testloader, training_batch_size, test_batch_size = initializer.ff_mnist_vectorized(
-        params['loss_type'],
-        params['activation_type'])
+    # net, trainloader, testloader, training_batch_size, test_batch_size = initializer.ff_mnist_vectorized(
+    #    params['loss_type'],
+    #    params['activation_type'])
 
     if params['loss_type'] == 'ls':
         optimizer_params = optimizer_params_ls
@@ -65,15 +65,15 @@ def main():
 
     optimizer = {
         'LLC': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC']),
-        'LLC_fix': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC_fix']),
-        'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
-        'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
-        'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
+        # 'LLC_fix': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC_fix']),
+        # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
+        #'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
+        # 'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
+        # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
     }
 
-    if params['loss_type'] == 'ls':
-        optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
+    # if params['loss_type'] == 'ls':
+    #    optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
     # opt = 'GDA'
     # losses = trainrun.train(trainloader, optimizer[opt], 10)
@@ -90,10 +90,11 @@ def train_all(optimizer, trainloader, params, net_init_parameters):
 
     for key, opt in optimizer.items():
         with timer(key):
-            losses = trainrun.train(trainloader, opt, 20, net_init_parameters)
+            #losses = trainrun.train_batched(trainloader, opt, 50, net_init_parameters)
+            losses = trainrun.train(trainloader, opt, 50, net_init_parameters)
 
         if params['loss_type'] == 'ls':
-            testrun.test_ls(opt.net, trainloader, 10)
+            testrun.test_ls(opt.net, trainloader, 2)
         elif params['loss_type'] == 'nll':
             testrun.test_nll(opt.net, trainloader)
 

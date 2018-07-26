@@ -2,7 +2,6 @@ import torch
 import logging
 import deepsplitting.utils.misc
 
-
 def run(net, testloader, eval_results):
     results = []
 

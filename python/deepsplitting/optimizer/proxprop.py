@@ -64,9 +64,9 @@ class Optimizer(BaseOptimizer):
                 a_save = inputs
 
             # Prox operator.
-            a_aug = torch.cat((a_save.t(), torch.ones(1, N, dtype=torch.double)), 0)
+            a_aug = torch.cat((a_save.t(), torch.ones(1, N, dtype=torch.float)), 0)
 
-            A = a_aug.matmul(a_aug.t()) + (1 / tau_theta) * torch.eye(a_aug.size(0), dtype=torch.double)
+            A = a_aug.matmul(a_aug.t()) + (1 / tau_theta) * torch.eye(a_aug.size(0), dtype=torch.float)
             B = z[i].t().matmul(a_aug.t()) + (1 / tau_theta) * torch.cat(
                 (self.net.weights(i), torch.unsqueeze(self.net.bias(i), 1)), 1)
 

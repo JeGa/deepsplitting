@@ -58,14 +58,28 @@ def ff_spirals_tf(loss_type):
     return tf
 
 
+def cnn_CIFAR10_tf(loss_type):
+    if loss_type == 'ls':
+        def target_transform(target):
+            return deepsplitting.utils.misc.one_hot(torch.tensor(target), 10).squeeze()
+
+        tf = target_transform
+    elif loss_type == 'nll':
+        tf = None
+    else:
+        raise ValueError("Unsupported loss type.")
+
+    return tf
+
+
 def ff_mnist_vectorized(loss_type, activation_type):
     tf = ff_mnist_tf(loss_type)
     loss = get_loss(loss_type)
 
-    layers = [784, 10]
+    layers = [784, 10, 10]
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()
+    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss)
     trainloader, testloader, training_batch_size, test_batch_size = \
         deepsplitting.data.mnist.load_MNIST_vectorized(-1, 8, target_transform=tf)
 
@@ -80,25 +94,21 @@ def ff_spirals(loss_type, activation_type):
 
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss).double()
+    net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss)
     trainloader, training_batch_size = deepsplitting.data.spirals.load_spirals(training_samples=-1, target_transform=tf)
 
     return net, trainloader, training_batch_size
 
 
 def cnn_cifar10(loss_type, activation_type):
-    if loss_type == 'ls':
-        raise NotImplementedError
-        # loss = deepsplitting.losses.mse.WeightedMSELoss()
-    elif loss_type == 'nll':
-        loss = torch.nn.CrossEntropyLoss(size_average=False)
-    else:
-        raise ValueError("Unsupported loss type.")
+    tf = cnn_CIFAR10_tf(loss_type)
+    loss = get_loss(loss_type)
 
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleSmallConvNet(activation, loss).double()
-    trainloader, testloader, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10(
-        training_samples=10)
+    net = deepsplitting.networks.simple.SimpleConvNet(activation, loss)
+    trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10_batched(20, 15,
+                                                                                                      target_transform=tf)
+    # trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10(training_samples=-1)
 
     return net, trainloader, training_batch_size, classes

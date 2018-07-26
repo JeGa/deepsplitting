@@ -57,7 +57,7 @@ def lambertw_exp(X):
         t = t / (e * p - 0.5 * (p + 1.0) * t / p)
         W[np.logical_not(C1)] = W[np.logical_not(C1)] - t
 
-        if np.max(np.abs(t)) < np.min(np.spacing(np.float64(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
+        if np.max(np.abs(t)) < np.min(np.spacing(np.float32(1)) * (1 + np.abs(W[np.logical_not(C1)]))):
             break
 
     return W
@@ -72,7 +72,7 @@ def newton_nls(init, f, df):
 
         x = x + sigma * s
 
-        if np.abs(f(x)) < np.spacing(np.float64(1)):
+        if np.abs(f(x)) < np.spacing(np.float32(1)):
             break
 
     return x
