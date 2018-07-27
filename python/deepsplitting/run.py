@@ -17,8 +17,14 @@ import deepsplitting.utils.trainrun as trainrun
 import deepsplitting.utils.testrun as testrun
 import deepsplitting.utils.timing as timing
 
+import deepsplitting.utils.global_config as global_config
+
 from deepsplitting.utils.misc import *
 from deepsplitting.optimizer.base import Hyperparams
+
+global_config.cfg = global_config.GlobalParams(
+    device=torch.device('cpu')
+)
 
 optimizer_params_ls = {
     'LLC': Hyperparams(M=0.001, factor=10, rho=10, rho_add=1),
@@ -90,11 +96,11 @@ def train_all(optimizer, trainloader, params, net_init_parameters):
 
     for key, opt in optimizer.items():
         with timer(key):
-            # losses = trainrun.train_batched(trainloader, opt, 50, net_init_parameters)
-            losses = trainrun.train(trainloader, opt, 50, net_init_parameters)
+            losses = trainrun.train_batched(trainloader, opt, 1, net_init_parameters)
+            # losses = trainrun.train(trainloader, opt, 50, net_init_parameters)
 
         if params['loss_type'] == 'ls':
-            testrun.test_ls(opt.net, trainloader, 2)
+            testrun.test_ls(opt.net, trainloader, 10)
         elif params['loss_type'] == 'nll':
             testrun.test_nll(opt.net, trainloader)
 

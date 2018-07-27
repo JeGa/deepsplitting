@@ -9,6 +9,8 @@ from .base import BaseOptimizer
 from .misc import prox_cross_entropy
 from .base import Initializer
 
+import deepsplitting.utils.global_config as global_config
+
 
 class Optimizer(BaseOptimizer):
     def __init__(self, net, N, hyperparams):
@@ -29,19 +31,17 @@ class Optimizer(BaseOptimizer):
         self.init_variables(Initializer.RANDN)
 
     def init_variables(self, initializer):
-        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.float)
+        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
 
         if initializer is Initializer.DEBUG:
-            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.float)
+            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
         else:
-            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.float)
+            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
 
     def init(self, inputs, labels, initializer, parameters=None):
         super(Optimizer, self).init_parameters(initializer, parameters)
 
         self.init_variables(initializer)
-
-        self.step_init(inputs, labels)
 
     def step_init(self, inputs, labels):
         # Init z and a.
@@ -139,13 +139,13 @@ class Optimizer(BaseOptimizer):
         j = 0
         max_iter = 8
 
-        R = self.v - self.lam / self.hyperparams.rho - y
+        R = self.v - self.lam.detach() / self.hyperparams.rho - y
         R = torch.reshape(R, (-1, 1))
 
         # Solve for x: (J.T*J)*x - R.T*J
 
         b = J.t().matmul(R)
-        x = torch.zeros(J.size(1), 1)
+        x = torch.zeros(J.size(1), 1, device=global_config.cfg.device)
 
         r = b - J.t().matmul(J.matmul(x))
         p = r
@@ -167,7 +167,7 @@ class Optimizer(BaseOptimizer):
                 return self.vec_to_params_update(x, from_numpy=False)
 
     def levmarq_step(self, J, y):
-        r = self.v - self.lam / self.hyperparams.rho - y
+        r = self.v - self.lam.detach() / self.hyperparams.rho - y
         r = torch.reshape(r, (-1, 1)).data.numpy()
 
         A = J.T.dot(J) + self.hyperparams.M * scipy.sparse.eye(J.shape[1])
@@ -183,12 +183,12 @@ class Optimizer(BaseOptimizer):
     def primal1(self, inputs, labels):
         y = self.net(inputs)
 
-        self.v = self.primal1_loss(y, self.lam, labels, self.hyperparams.rho, self.net.criterion)
+        self.v = self.primal1_loss(y, self.lam.detach(), labels, self.hyperparams.rho, self.net.criterion)
 
     def dual(self, inputs):
         y = self.net(inputs)
 
-        self.lam = self.lam + self.hyperparams.rho * (y - self.v)
+        self.lam = self.lam.detach() + self.hyperparams.rho * (y - self.v)
 
 
 def primal1_ls(y, lam, y_train, rho, loss):
@@ -200,7 +200,7 @@ def primal1_ls(y, lam, y_train, rho, loss):
 
 
 def primal1_nll(y, lam, y_train, rho, loss):
-    z = torch.zeros(y.size(), dtype=torch.float)
+    z = torch.zeros(y.size(), dtype=torch.float, device=global_config.cfg.device)
 
     r = y + lam / rho
 

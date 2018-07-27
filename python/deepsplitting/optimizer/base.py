@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from enum import Enum, auto
+import deepsplitting.utils.global_config as global_config
 
 
 class Hyperparams:
@@ -80,7 +81,11 @@ class BaseOptimizer:
 
         for i, yi in enumerate(y):  # Samples.
             for j, c in enumerate(yi):  # Classes.
-                c.backward(retain_graph=True)
+                # Free the graph at the last backward call.
+                if i == y.size(0) - 1 and j == yi.size(0) - 1:
+                    c.backward(retain_graph=False)
+                else:
+                    c.backward(retain_graph=True)
 
                 start_index = 0
                 for p in self.net.parameters():
@@ -100,11 +105,15 @@ class BaseOptimizer:
         self.net.zero_grad()
 
         ysize = y.numel()
-        J = torch.empty(ysize, self.numparams())
+        J = torch.empty(ysize, self.numparams(), device=global_config.cfg.device)
 
         for i, yi in enumerate(y):  # Samples.
             for j, c in enumerate(yi):  # Classes.
-                c.backward(retain_graph=True)
+                # Free the graph at the last backward call.
+                if i == y.size(0) - 1 and j == yi.size(0) - 1:
+                    c.backward(retain_graph=False)
+                else:
+                    c.backward(retain_graph=True)
 
                 start_index = 0
                 for p in self.net.parameters():

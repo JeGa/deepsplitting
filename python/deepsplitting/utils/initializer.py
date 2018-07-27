@@ -6,6 +6,7 @@ import deepsplitting.data.cifar10
 import deepsplitting.losses.mse
 import deepsplitting.networks.simple
 import deepsplitting.utils
+import deepsplitting.utils.global_config as global_config
 
 
 def get_activation(activation_type):
@@ -107,8 +108,12 @@ def cnn_cifar10(loss_type, activation_type):
     activation = get_activation(activation_type)
 
     net = deepsplitting.networks.simple.SimpleConvNet(activation, loss)
-    trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10_batched(20, 15,
-                                                                                                      target_transform=tf)
+
+    net.to(global_config.cfg.device)
+
+    trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10_batched(5, 15,
+                                                                                                      target_transform=tf)  # ,
+    # folder='/work/ganslose/data')
     # trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10(training_samples=-1)
 
     return net, trainloader, training_batch_size, classes

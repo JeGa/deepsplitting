@@ -48,8 +48,11 @@ def load_CIFAR10_batched(training_batch_size, test_batch_size,
     testset = torchvision.datasets.CIFAR10(root=folder, train=False, download=True, transform=transform,
                                            target_transform=target_transform)
 
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=training_batch_size, shuffle=False, num_workers=2)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=test_batch_size, shuffle=False, num_workers=2)
+    #training_sampler, training_batch_size = get_sampler(10, trainset)
+
+    trainloader = torch.utils.data.DataLoader(trainset,
+                                              batch_size=training_batch_size, shuffle=False, num_workers=0)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=test_batch_size, shuffle=False, num_workers=4)
 
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 

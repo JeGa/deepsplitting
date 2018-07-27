@@ -1,5 +1,4 @@
 from .base import BaseOptimizer
-from .base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
