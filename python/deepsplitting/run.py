@@ -25,22 +25,26 @@ from deepsplitting.optimizer.base import Hyperparams
 
 server_cfg = global_config.GlobalParams(
     device=torch.device('cuda'),
-    training_batch_size=50,
+    training_batch_size=400,
     epochs=1,
-    training_samples=-1  # Take subset of training set.
+    training_samples=-1,  # Take subset of training set.
+    results_folder='results',
+    results_data_folder='data'
 )
 
 local_cfg = global_config.GlobalParams(
     device=torch.device('cpu'),
     training_batch_size=1,
-    epochs=1,
-    training_samples=10  # Take subset of training set.
+    epochs=30,
+    training_samples=10,  # Take subset of training set.
+    results_folder='results',
+    results_subfolders={'data': 'data'}
 )
 
 global_config.cfg = local_cfg
 
 optimizer_params_ls = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=1, rho_add=0),
+    'LLC': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
     'LM': Hyperparams(M=0.001, factor=10),
@@ -60,6 +64,8 @@ optimizer_params_nll = {
 
 def main():
     logging.basicConfig(level=logging.INFO)
+
+    deepsplitting.utils.misc.make_results_folder()
 
     params = {
         'loss_type': 'ls',  # 'ls' or 'nll'.
@@ -132,6 +138,8 @@ def train_all(optimizer, trainloader, params, net_init_parameters):
 
     plot_summary(summary, timer, name='results',
                  title='Loss: ' + params['loss_type'] + ', activation: ' + params['activation_type'])
+
+    save_summary(summary, timer)
 
 
 if __name__ == '__main__':

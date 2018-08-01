@@ -4,6 +4,8 @@ import os.path
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
+import datetime
 
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
@@ -67,8 +69,7 @@ def plot_summary(summary, timer, name, title='', folder='results'):
     every = 4
 
     for key, losses in summary.items():
-        plt.plot(losses,
-                 label="{} {:.6f}s".format(key, timer.times[key]) if key in timer.times else "{}".format(key),
+        plt.plot(losses, label=key + time_str(key, timer),
                  linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
 
         every += 1
@@ -88,3 +89,34 @@ def cifarshow():
 
 def is_llc(opt):
     return type(opt) is deepsplitting.optimizer.llc.Optimizer
+
+
+def save_csv(name, data):
+    folder = os.path.join(global_config.cfg.results_folder, global_config.cfg.results_subfolders['data'])
+
+    with open(os.path.join(folder, name), 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
+
+def time_str(key, timer):
+    return "{:.6f}".format(timer.times[key]) if key in timer.times else ''
+
+
+def save_summary(summary, timer):
+    for key, losses in summary.items():
+        timerstr = time_str(key, timer)
+
+        save_csv("{}_{}_{}.csv".format(key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr), losses)
+
+
+def mkdir_ifnot(dir):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+
+def make_results_folder():
+    mkdir_ifnot(global_config.cfg.results_folder)
+
+    for key, f in global_config.cfg.results_subfolders.items():
+        mkdir_ifnot(os.path.join(global_config.cfg.results_folder, f))
