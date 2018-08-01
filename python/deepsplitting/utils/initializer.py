@@ -3,6 +3,7 @@ from torch.nn import functional as F
 
 import deepsplitting.data.spirals
 import deepsplitting.data.cifar10
+import deepsplitting.data.mnist
 import deepsplitting.losses.mse
 import deepsplitting.networks.simple
 import deepsplitting.utils
@@ -31,7 +32,7 @@ def get_loss(loss_type):
     return loss
 
 
-def ff_mnist_tf(loss_type):
+def mnist_tf(loss_type):
     if loss_type == 'ls':
         def target_transform(target):
             return deepsplitting.utils.misc.one_hot(target, 10).squeeze()
@@ -74,7 +75,7 @@ def cnn_CIFAR10_tf(loss_type):
 
 
 def ff_mnist_vectorized(loss_type, activation_type):
-    tf = ff_mnist_tf(loss_type)
+    tf = mnist_tf(loss_type)
     loss = get_loss(loss_type)
 
     layers = [784, 10, 10]
@@ -96,6 +97,9 @@ def ff_spirals(loss_type, activation_type):
     activation = get_activation(activation_type)
 
     net = deepsplitting.networks.simple.SimpleFFNet(layers, activation, loss)
+
+    net.to(global_config.cfg.device)
+
     trainloader, training_batch_size = deepsplitting.data.spirals.load_spirals(training_samples=-1, target_transform=tf)
 
     return net, trainloader, training_batch_size
@@ -107,13 +111,31 @@ def cnn_cifar10(loss_type, activation_type):
 
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleConvNet(activation, loss)
+    net = deepsplitting.networks.simple.SimpleConvNet_cifar(activation, loss)
 
     net.to(global_config.cfg.device)
 
-    trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10_batched(5, 15,
-                                                                                                      target_transform=tf)  # ,
-    # folder='/work/ganslose/data')
-    # trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10(training_samples=-1)
+    # trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10_batched(
+    #    global_config.cfg.training_batch_size, 15, target_transform=tf, folder='/work/ganslose/data')
+
+    trainloader, _, classes, training_batch_size, _ = deepsplitting.data.cifar10.load_CIFAR10(training_samples=10,
+                                                                                              target_transform=tf)
 
     return net, trainloader, training_batch_size, classes
+
+
+def cnn_mnist(loss_type, activation_type):
+    tf = mnist_tf(loss_type)
+    loss = get_loss(loss_type)
+
+    activation = get_activation(activation_type)
+
+    net = deepsplitting.networks.simple.SimpleConvNet_mnist(activation, loss)
+
+    net.to(global_config.cfg.device)
+
+    trainloader, testloader, training_batch_size, test_batch_size = deepsplitting.data.mnist.load_MNIST(
+        training_samples=global_config.cfg.training_samples, target_transform=tf, fullbatch=True,
+        training_batch_size=global_config.cfg.training_batch_size, test_batch_size=1)
+
+    return net, trainloader, training_batch_size

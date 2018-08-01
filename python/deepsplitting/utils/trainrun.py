@@ -6,10 +6,39 @@ from deepsplitting.optimizer.base import Initializer
 
 def total_loss(net, loader):
     loss = 0
-    for inputs, label in loader:
-        loss += net.loss(inputs, label)
+    for inputs, labels in loader:
+        inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
+        loss += net.loss(inputs, labels).item()
 
     return loss
+
+
+def train_llc(trainloader, optimizer, epochs, params=None):
+    losses = list()
+    lagrangians = list()
+
+    log_iter = 1
+
+    # Only full batch.
+    inputs, labels = iter(trainloader).next()
+    inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
+
+    optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
+
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+
+        current_loss, new_loss, current_Lagrangian, new_Lagrangian, \
+        loss_batchstep, Lagrangian_batchstep = optimizer.step(inputs, labels)
+
+        lagrangians += Lagrangian_batchstep
+        losses += loss_batchstep
+
+        if epoch % log_iter == log_iter - 1:
+            logging.info("{}: [{}/{}] Loss = {:.6f}, Lagrangian = {:.6f}".format(
+                type(optimizer).__module__, epoch + 1, epochs, current_loss, current_Lagrangian))
+
+    return losses, lagrangians
 
 
 def train(trainloader, optimizer, epochs, params=None):
@@ -19,15 +48,14 @@ def train(trainloader, optimizer, epochs, params=None):
 
     # Only full batch.
     inputs, labels = iter(trainloader).next()
+    inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
 
     optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
 
     for epoch in range(epochs):
-
         optimizer.zero_grad()
 
         current_loss, new_loss = optimizer.step(inputs, labels)
-        losses.append(current_loss)
 
         if epoch % log_iter == log_iter - 1:
             logging.info("{}: [{}/{}] Loss = {:.6f}".format(
@@ -40,16 +68,16 @@ def train_batched(trainloader, optimizer, epochs, params=None):
     total_losses = list()
     batch_losses = list()
 
-    batch_loss_log = 10
-    total_loss_log = 100
+    batch_loss_log = -1
+    total_loss_log = 1
 
     optimizer.init(None, None, Initializer.FROM_PARAMS, params)
 
-    # loss = total_loss(optimizer.net, trainloader)
-    # total_losses.append(loss)
+    loss = total_loss(optimizer.net, trainloader)
+    total_losses.append(loss)
 
-    # logging.info("Total: {}: [{}:{}/{}] Loss = {:.6f}".format(
-    #    type(optimizer).__module__, 0, 0, epochs, loss))
+    logging.info("Total: {}: [{}:{}/{}] Loss = {:.6f}".format(
+        type(optimizer).__module__, 0, 0, epochs, loss))
 
     for epoch in range(epochs):
         for i, data in enumerate(trainloader):

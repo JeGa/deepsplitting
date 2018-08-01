@@ -16,19 +16,32 @@ import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
 import deepsplitting.utils.testrun as testrun
 import deepsplitting.utils.timing as timing
+import deepsplitting.utils.misc
 
 import deepsplitting.utils.global_config as global_config
 
 from deepsplitting.utils.misc import *
 from deepsplitting.optimizer.base import Hyperparams
 
-global_config.cfg = global_config.GlobalParams(
-    device=torch.device('cpu')
+server_cfg = global_config.GlobalParams(
+    device=torch.device('cuda'),
+    training_batch_size=50,
+    epochs=1,
+    training_samples=-1  # Take subset of training set.
 )
 
+local_cfg = global_config.GlobalParams(
+    device=torch.device('cpu'),
+    training_batch_size=1,
+    epochs=1,
+    training_samples=10  # Take subset of training set.
+)
+
+global_config.cfg = local_cfg
+
 optimizer_params_ls = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=10, rho_add=1),
-    'LLC_fix': Hyperparams(M=0.001, factor=10, rho=10, rho_add=0),
+    'LLC': Hyperparams(M=0.001, factor=10, rho=1, rho_add=0),
+    'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
     'LM': Hyperparams(M=0.001, factor=10),
     'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
@@ -54,8 +67,11 @@ def main():
         'resutls_folder': '../results'
     }
 
-    net, trainloader, training_batch_size, classes = initializer.cnn_cifar10(params['loss_type'],
-                                                                             params['activation_type'])
+    # net, trainloader, training_batch_size, classes = initializer.cnn_cifar10(params['loss_type'],
+    #                                                                         params['activation_type'])
+
+    net, trainloader, training_batch_size = initializer.cnn_mnist(params['loss_type'],
+                                                                  params['activation_type'])
 
     # net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'],
     #                                                               params['activation_type'])
@@ -96,17 +112,23 @@ def train_all(optimizer, trainloader, params, net_init_parameters):
 
     for key, opt in optimizer.items():
         with timer(key):
-            losses = trainrun.train_batched(trainloader, opt, 1, net_init_parameters)
-            # losses = trainrun.train(trainloader, opt, 50, net_init_parameters)
+            if deepsplitting.utils.misc.is_llc(opt):
+                losses, lagrangians = trainrun.train_llc(trainloader,
+                                                         opt, global_config.cfg.epochs,
+                                                         net_init_parameters)
+                summary[key + '_L'] = lagrangians
+            else:
+                # losses = trainrun.train_batched(trainloader, opt, global_config.cfg.epochs, net_init_parameters)
+                losses = trainrun.train(trainloader, opt, global_config.cfg.epochs, net_init_parameters)
+
+        # plot_loss_curve(losses, key)
+
+        summary[key] = losses
 
         if params['loss_type'] == 'ls':
             testrun.test_ls(opt.net, trainloader, 10)
         elif params['loss_type'] == 'nll':
             testrun.test_nll(opt.net, trainloader)
-
-        # plot_loss_curve(losses, key)
-
-        summary[key] = losses
 
     plot_summary(summary, timer, name='results',
                  title='Loss: ' + params['loss_type'] + ', activation: ' + params['activation_type'])

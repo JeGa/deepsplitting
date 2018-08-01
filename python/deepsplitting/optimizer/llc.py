@@ -30,6 +30,8 @@ class Optimizer(BaseOptimizer):
 
         self.init_variables(Initializer.RANDN)
 
+        self.step = self.step_batched
+
     def init_variables(self, initializer):
         self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
 
@@ -44,13 +46,48 @@ class Optimizer(BaseOptimizer):
         self.init_variables(initializer)
 
     def step_init(self, inputs, labels):
+        # TODO
         # Init z and a.
-        self.v = self.net(inputs)
+        # self.v = self.net(inputs)
+        raise NotImplementedError()
 
-    def step(self, inputs, labels):
+    def step_batched(self, inputs, labels):
+        """
+        This function does the batching. The given inputs and labels should be sampled in full batch and be always
+        in the same order.
+        """
         L_data_current, Lagrangian_current = self.eval(inputs, labels)
 
-        self.primal2_cg(inputs, labels)
+        indices = torch.randperm(self.N)
+        batch_size = global_config.cfg.training_batch_size
+
+        loss_batchstep = list()
+        L_batchstep = list()
+        for index in (indices[i:i + batch_size] for i in range(0, indices.size(0), batch_size)):
+            self.primal2_cg(inputs, index)
+            self.primal1(inputs, labels)
+            self.dual(inputs)
+
+            L_data_batch, Lagrangian_batch = self.eval(inputs, labels)
+            loss_batchstep.append(L_data_batch.item())
+            L_batchstep.append(Lagrangian_batch.item())
+
+            logging.info("{}: Batch step: Loss = {:.6f}, Lagrangian = {:.6f}".format(
+                type(self).__module__, L_data_batch, Lagrangian_batch))
+
+        L_data_new, Lagrangian_new = self.eval(inputs, labels)
+
+        if Lagrangian_new > Lagrangian_current:
+            self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
+
+        return L_data_current.item(), L_data_new.item(), \
+               Lagrangian_current.item(), Lagrangian_new.item(), \
+               loss_batchstep, L_batchstep
+
+    def step_fullbatch(self, inputs, labels):
+        L_data_current, Lagrangian_current = self.eval(inputs, labels)
+
+        self.primal2_cg(inputs)
 
         self.primal1(inputs, labels)
 
@@ -78,7 +115,7 @@ class Optimizer(BaseOptimizer):
             saved_params = self.save_params()
             self.restore_params(params)
 
-        y = self.net(inputs)
+        y = self.net(inputs).detach()
         data_loss = self.net.criterion(y, labels)
 
         loss = self.net.criterion(self.v, labels)
@@ -119,27 +156,35 @@ class Optimizer(BaseOptimizer):
             if i == max_iter:
                 break
 
-    def primal2_cg(self, inputs, labels):
+    def primal2_cg(self, inputs, index=None):
         i = 0
         max_iter = 1
 
         while True:
             i += 1
 
-            y = self.net(inputs)
+            if index is None:
+                y = self.net(inputs)
+            else:
+                y = self.net(inputs[index])
+
             J = self.jacobian_torch(y)
 
-            params = self.cg_step(J, y)
+            params = self.cg_step(J, y, index)
             self.restore_params(params)
 
             if i == max_iter:
                 break
 
-    def cg_step(self, J, y):
+    def cg_step(self, J, y, index):
         j = 0
         max_iter = 8
 
-        R = self.v - self.lam.detach() / self.hyperparams.rho - y
+        if index is None:
+            R = self.v.detach() - self.lam.detach() / self.hyperparams.rho - y
+        else:
+            R = self.v.detach()[index] - self.lam.detach()[index] / self.hyperparams.rho - y
+
         R = torch.reshape(R, (-1, 1))
 
         # Solve for x: (J.T*J)*x - R.T*J
@@ -181,12 +226,12 @@ class Optimizer(BaseOptimizer):
         return param_list
 
     def primal1(self, inputs, labels):
-        y = self.net(inputs)
+        y = self.net(inputs).detach()
 
         self.v = self.primal1_loss(y, self.lam.detach(), labels, self.hyperparams.rho, self.net.criterion)
 
     def dual(self, inputs):
-        y = self.net(inputs)
+        y = self.net(inputs).detach()
 
         self.lam = self.lam.detach() + self.hyperparams.rho * (y - self.v)
 

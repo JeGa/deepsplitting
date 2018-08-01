@@ -7,6 +7,7 @@ import numpy as np
 
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
+import deepsplitting.utils.global_config as global_config
 
 
 def imshow(img, factor=1 / (2 + 0.5)):
@@ -38,7 +39,7 @@ def one_hot(x, classes):
     else:
         N = 1
 
-    onehot = torch.zeros((N, classes), dtype=torch.float)
+    onehot = torch.zeros(N, classes, dtype=torch.float)
     onehot[list(range(N)), x] = 1
 
     return onehot
@@ -66,7 +67,8 @@ def plot_summary(summary, timer, name, title='', folder='results'):
     every = 4
 
     for key, losses in summary.items():
-        plt.plot(losses, label="{} {:.6f}s".format(key, timer.times[key]),
+        plt.plot(losses,
+                 label="{} {:.6f}s".format(key, timer.times[key]) if key in timer.times else "{}".format(key),
                  linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
 
         every += 1
@@ -82,3 +84,7 @@ def cifarshow():
     trainloader, testloader, classes, training_batch_size, test_batch_size = \
         deepsplitting.data.cifar10.load_CIFAR10(8, 8)
     show(trainloader)
+
+
+def is_llc(opt):
+    return type(opt) is deepsplitting.optimizer.llc.Optimizer

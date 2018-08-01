@@ -7,7 +7,7 @@ from .misc import To64fTensor
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
                  normalize_transform=torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                 folder='data'):
+                 folder='data', target_transform=None):
     """
     Load CIFAR10 data set. Data is always sampled in the same order and full batch.
     Default normalization is to the range [-1, 1].
@@ -15,8 +15,13 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                 normalize_transform])
 
-    trainset = torchvision.datasets.CIFAR10(root=folder, train=True, download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(root=folder, train=False, download=True, transform=transform)
+    if target_transform is not None:
+        target_transform = torchvision.transforms.Lambda(target_transform)
+
+    trainset = torchvision.datasets.CIFAR10(root=folder, train=True, download=True, transform=transform,
+                                            target_transform=target_transform)
+    testset = torchvision.datasets.CIFAR10(root=folder, train=False, download=True, transform=transform,
+                                           target_transform=target_transform)
 
     training_sampler, training_batch_size = get_sampler(training_samples, trainset)
     test_sampler, test_batch_size = get_sampler(test_samples, testset)
@@ -48,7 +53,7 @@ def load_CIFAR10_batched(training_batch_size, test_batch_size,
     testset = torchvision.datasets.CIFAR10(root=folder, train=False, download=True, transform=transform,
                                            target_transform=target_transform)
 
-    #training_sampler, training_batch_size = get_sampler(10, trainset)
+    # training_sampler, training_batch_size = get_sampler(10, trainset)
 
     trainloader = torch.utils.data.DataLoader(trainset,
                                               batch_size=training_batch_size, shuffle=False, num_workers=0)

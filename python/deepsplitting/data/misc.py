@@ -1,18 +1,21 @@
 import torch
 import torchvision
 
+
 def get_sampler(N, dataset):
     if N == -1:
         sampler = torch.utils.data.sampler.SequentialSampler(dataset)
         batch_size = len(dataset)
     else:
-        sampler = SubsetSampler(N)
+        sampler = SequentialSubsetSampler(N)
+        # TODO: This shuffles.
+        #sampler = torch.utils.data.sampler.SubsetRandomSampler(list(range(N)))
         batch_size = N
 
     return sampler, batch_size
 
 
-class SubsetSampler(torch.utils.data.sampler.Sampler):
+class SequentialSubsetSampler(torch.utils.data.sampler.Sampler):
     def __init__(self, N):
         self.N = N
 

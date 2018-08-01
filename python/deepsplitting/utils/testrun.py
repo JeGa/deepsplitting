@@ -1,6 +1,8 @@
 import torch
 import logging
 import deepsplitting.utils.misc
+import deepsplitting.utils.global_config as global_config
+
 
 def run(net, testloader, eval_results):
     results = []
@@ -8,8 +10,9 @@ def run(net, testloader, eval_results):
     with torch.no_grad():
         for data in testloader:
             inputs, labels = data
+            inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
 
-            outputs = net(inputs)
+            outputs = net(inputs).detach()
 
             results.append(eval_results(outputs, labels))
 
@@ -36,7 +39,7 @@ def test_ls(net, testloader, classes):
     def evaluate(outputs, labels):
         _, predicted = torch.max(outputs.data, 1)
 
-        predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, classes)
+        predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, classes).to(global_config.cfg.device)
         return torch.sum(labels == predicted_one_hot, 1) == labels.size(1)
 
     run(net, testloader, evaluate)
