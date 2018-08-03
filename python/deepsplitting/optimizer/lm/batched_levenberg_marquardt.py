@@ -1,0 +1,3 @@
+# - vangrad
+# - armijo
+# - damping

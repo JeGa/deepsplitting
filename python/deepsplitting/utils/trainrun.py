@@ -1,4 +1,5 @@
 import logging
+
 import deepsplitting.utils.global_config as global_config
 
 from deepsplitting.optimizer.base import Initializer
@@ -13,32 +14,33 @@ def total_loss(net, loader):
     return loss
 
 
-def train_llc(trainloader, optimizer, epochs, params=None):
-    losses = list()
-    lagrangians = list()
+def train_llc(trainloader, optimizer, params=None):
+    data_loss = list()
+    lagrangian = list()
 
     log_iter = 1
 
-    # Only full batch.
+    # Full batch. Batching is done by the optimizer.
     inputs, labels = iter(trainloader).next()
     inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
 
     optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
 
-    for epoch in range(epochs):
+    for epoch in range(global_config.cfg.epochs):
         optimizer.zero_grad()
 
-        current_loss, new_loss, current_Lagrangian, new_Lagrangian, \
-        loss_batchstep, Lagrangian_batchstep = optimizer.step(inputs, labels)
+        (current_data_loss, new_data_loss,
+         current_lagrangian, new_lagrangian,
+         data_loss_batchstep, lagrangian_batchstep) = optimizer.step(inputs, labels)
 
-        lagrangians += Lagrangian_batchstep
-        losses += loss_batchstep
+        data_loss += data_loss_batchstep
+        lagrangian += lagrangian_batchstep
 
         if epoch % log_iter == log_iter - 1:
             logging.info("{}: [{}/{}] Loss = {:.6f}, Lagrangian = {:.6f}".format(
-                type(optimizer).__module__, epoch + 1, epochs, current_loss, current_Lagrangian))
+                type(optimizer).__module__, epoch + 1, global_config.cfg.epochs, current_data_loss, current_lagrangian))
 
-    return losses, lagrangians
+    return data_loss, lagrangian
 
 
 def train(trainloader, optimizer, epochs, params=None):

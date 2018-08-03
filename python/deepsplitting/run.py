@@ -4,95 +4,39 @@ matplotlib.use('Agg')
 
 import logging
 
-import deepsplitting.optimizer.gradient_descent as GD
-import deepsplitting.optimizer.gradient_descent_armijo as GDA
-import deepsplitting.optimizer.llc as LLC
-import deepsplitting.optimizer.prox_descent as ProxDescent
-import deepsplitting.optimizer.levenberg_marquardt as LM
-import deepsplitting.optimizer.proxprop as ProxProp
-import deepsplitting.optimizer.proxprop_abstract as ProxPropAbstract
-
 import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
 import deepsplitting.utils.testrun as testrun
 import deepsplitting.utils.timing as timing
 import deepsplitting.utils.misc
-
+import deepsplitting.config as cfg
 import deepsplitting.utils.global_config as global_config
 
+import deepsplitting.optimizer.splitting.batched_levenberg_marquardt as sbLM
+
 from deepsplitting.utils.misc import *
-from deepsplitting.optimizer.base import Hyperparams
 
-server_cfg = global_config.GlobalParams(
-    device=torch.device('cuda'),
-    training_batch_size=400,
-    epochs=1,
-    training_samples=-1,  # Take subset of training set.
-    results_folder='results',
-    results_data_folder='data'
-)
-
-local_cfg = global_config.GlobalParams(
-    device=torch.device('cpu'),
-    training_batch_size=1,
-    epochs=30,
-    training_samples=10,  # Take subset of training set.
-    results_folder='results',
-    results_subfolders={'data': 'data'}
-)
-
-global_config.cfg = local_cfg
-
-optimizer_params_ls = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
-    'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
-    'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
-    'LM': Hyperparams(M=0.001, factor=10),
-    'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
-    'GD': Hyperparams(lr=0.0005),
-    'ProxProp': Hyperparams(tau=0.005, tau_theta=5)
-}
-
-optimizer_params_nll = {
-    'LLC': Hyperparams(M=0.001, factor=10, rho=35, rho_add=1),
-    'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
-    'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
-    'GD': Hyperparams(lr=0.005),
-    'ProxProp': Hyperparams(tau=0.005, tau_theta=10)
-}
+global_config.cfg = cfg.local_cfg
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    deepsplitting.utils.misc.make_results_folder()
+    deepsplitting.utils.misc.make_results_folder(global_config.cfg)
 
-    params = {
-        'loss_type': 'ls',  # 'ls' or 'nll'.
-        'activation_type': 'relu',  # 'relu' or 'sigmoid'.
-        'resutls_folder': '../results'
-    }
+    net, trainloader, training_batch_size, classes = initializer.cnn_mnist(cfg.params.loss_type,
+                                                                           cfg.params.activation_type)
 
-    # net, trainloader, training_batch_size, classes = initializer.cnn_cifar10(params['loss_type'],
-    #                                                                         params['activation_type'])
-
-    net, trainloader, training_batch_size = initializer.cnn_mnist(params['loss_type'],
-                                                                  params['activation_type'])
-
-    # net, trainloader, training_batch_size = initializer.ff_spirals(params['loss_type'],
-    #                                                               params['activation_type'])
-
-    # net, trainloader, testloader, training_batch_size, test_batch_size = initializer.ff_mnist_vectorized(
-    #    params['loss_type'],
-    #    params['activation_type'])
-
-    if params['loss_type'] == 'ls':
-        optimizer_params = optimizer_params_ls
-    elif params['loss_type'] == 'nll':
-        optimizer_params = optimizer_params_nll
+    if cfg.params.loss_type == 'ls':
+        optimizer_params = cfg.optimizer_params_ls
+    elif cfg.params.loss_type == 'nll':
+        optimizer_params = cfg.optimizer_params_nll
+    else:
+        raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        'LLC': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC']),
+        'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping']),
+
         # 'LLC_fix': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC_fix']),
         # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         # 'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
@@ -100,46 +44,48 @@ def main():
         # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
     }
 
-    # if params['loss_type'] == 'ls':
+    # if params.loss_type == 'ls':
     #    optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
 
-    # opt = 'ProxProp'
-    # losses = trainrun.train(trainloader, optimizer[opt], 10)
-    # plot_loss_curve(losses, title=opt)
-    # testrun.test_ls(net, trainloader, 10)
-
+    # To have the same network parameter initialization for all nets.
     net_init_parameters = next(iter(optimizer.values())).save_params()
-    train_all(optimizer, trainloader, params, net_init_parameters)
+
+    train_all(optimizer, trainloader, cfg.params, net_init_parameters, optimizer_params, classes)
 
 
-def train_all(optimizer, trainloader, params, net_init_parameters):
+def train(opt, key, trainloader, net_init_parameters, summary):
+    # if deepsplitting.utils.misc.is_llc(opt):
+    data_loss, lagrangian = trainrun.train_llc(trainloader, opt, net_init_parameters)
+
+    results = {
+        'data_loss': data_loss,
+        'lagrangian': lagrangian
+    }
+
+    summary[key] = results
+
+
+# else:
+#    raise NotImplementedError()
+
+
+def train_all(optimizer, trainloader, params, net_init_parameters, optimizer_params, classes):
     summary = {}
     timer = timing.Timing()
 
     for key, opt in optimizer.items():
         with timer(key):
-            if deepsplitting.utils.misc.is_llc(opt):
-                losses, lagrangians = trainrun.train_llc(trainloader,
-                                                         opt, global_config.cfg.epochs,
-                                                         net_init_parameters)
-                summary[key + '_L'] = lagrangians
-            else:
-                # losses = trainrun.train_batched(trainloader, opt, global_config.cfg.epochs, net_init_parameters)
-                losses = trainrun.train(trainloader, opt, global_config.cfg.epochs, net_init_parameters)
+            train(opt, key, trainloader, net_init_parameters, summary)
 
-        # plot_loss_curve(losses, key)
-
-        summary[key] = losses
-
-        if params['loss_type'] == 'ls':
-            testrun.test_ls(opt.net, trainloader, 10)
-        elif params['loss_type'] == 'nll':
+        if params.loss_type == 'ls':
+            testrun.test_ls(opt.net, trainloader, classes)
+        elif params.loss_type == 'nll':
             testrun.test_nll(opt.net, trainloader)
 
-    plot_summary(summary, timer, name='results',
-                 title='Loss: ' + params['loss_type'] + ', activation: ' + params['activation_type'])
+    # TODO plot_summary(summary, timer, name='results',
+    #             title='Loss: ' + params.loss_type + ', activation: ' + params.activation_type)
 
-    save_summary(summary, timer)
+    # TODO save_summary(summary, timer, optimizer_params)
 
 
 if __name__ == '__main__':

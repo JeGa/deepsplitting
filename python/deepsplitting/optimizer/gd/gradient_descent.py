@@ -1,4 +1,4 @@
-from .base import BaseOptimizer
+from deepsplitting.optimizer.base import BaseOptimizer
 
 
 class Optimizer(BaseOptimizer):

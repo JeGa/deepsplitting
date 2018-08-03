@@ -53,4 +53,6 @@ def mnist_loader(training_samples, test_samples, folder, transform, target_trans
     testloader = torch.utils.data.DataLoader(testset, sampler=test_sampler, batch_size=test_batch_size,
                                              shuffle=False, num_workers=2)
 
-    return trainloader, testloader, training_batch_size, test_batch_size
+    classes = 10
+
+    return trainloader, testloader, training_batch_size, test_batch_size, classes

@@ -1,5 +1,5 @@
-from .base import BaseOptimizer
-from .base import Hyperparams
+from deepsplitting.optimizer.base import BaseOptimizer
+from deepsplitting.optimizer.base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):

@@ -9,7 +9,14 @@ import datetime
 
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
-import deepsplitting.utils.global_config as global_config
+
+
+class Params:
+    def __init__(self, **params):
+        self.__dict__.update(params)
+
+    def csv_format(self):
+        return ["{}={}".format(key, str(v)) for key, v in self.__dict__.items()]
 
 
 def imshow(img, factor=1 / (2 + 0.5)):
@@ -87,15 +94,21 @@ def cifarshow():
     show(trainloader)
 
 
+# TODO
 def is_llc(opt):
-    return type(opt) is deepsplitting.optimizer.llc.Optimizer
+    raise NotImplementedError
+    # return type(opt) is deepsplitting.
 
 
-def save_csv(name, data):
-    folder = os.path.join(global_config.cfg.results_folder, global_config.cfg.results_subfolders['data'])
+def save_csv(name, data, params, cfg):
+    folder = os.path.join(cfg.results_folder, cfg.results_subfolders['data'])
 
     with open(os.path.join(folder, name), 'w', newline='') as f:
         writer = csv.writer(f)
+
+        writer.writerow(cfg.csv_format())
+        if params is not None:
+            writer.writerow(params.csv_format())
         writer.writerow(data)
 
 
@@ -103,11 +116,17 @@ def time_str(key, timer):
     return "{:.6f}".format(timer.times[key]) if key in timer.times else ''
 
 
-def save_summary(summary, timer):
+def save_summary(summary, timer, params, cfg):
     for key, losses in summary.items():
         timerstr = time_str(key, timer)
 
-        save_csv("{}_{}_{}.csv".format(key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr), losses)
+        if key in params:
+            p = params[key]
+        else:
+            p = None
+
+        save_csv("{}_{}_{}.csv".format(key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr),
+                 losses, p, cfg)
 
 
 def mkdir_ifnot(dir):
@@ -115,8 +134,8 @@ def mkdir_ifnot(dir):
         os.mkdir(dir)
 
 
-def make_results_folder():
-    mkdir_ifnot(global_config.cfg.results_folder)
+def make_results_folder(cfg):
+    mkdir_ifnot(cfg.results_folder)
 
-    for key, f in global_config.cfg.results_subfolders.items():
-        mkdir_ifnot(os.path.join(global_config.cfg.results_folder, f))
+    for key, f in cfg.results_subfolders.items():
+        mkdir_ifnot(os.path.join(cfg.results_folder, f))

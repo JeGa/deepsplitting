@@ -134,8 +134,8 @@ def cnn_mnist(loss_type, activation_type):
 
     net.to(global_config.cfg.device)
 
-    trainloader, testloader, training_batch_size, test_batch_size = deepsplitting.data.mnist.load_MNIST(
+    trainloader, testloader, training_batch_size, test_batch_size, classes = deepsplitting.data.mnist.load_MNIST(
         training_samples=global_config.cfg.training_samples, target_transform=tf, fullbatch=True,
         training_batch_size=global_config.cfg.training_batch_size, test_batch_size=1)
 
-    return net, trainloader, training_batch_size
+    return net, trainloader, training_batch_size, classes

@@ -1,12 +1,14 @@
 import torch
 import numpy as np
 from enum import Enum, auto
+
 import deepsplitting.utils.global_config as global_config
+from deepsplitting.utils.misc import Params
 
 
-class Hyperparams:
+class Hyperparams(Params):
     def __init__(self, **params):
-        self.__dict__.update(params)
+        super(Hyperparams, self).__init__(**params)
 
 
 class Initializer(Enum):
@@ -97,9 +99,10 @@ class BaseOptimizer:
 
         return J
 
-    def jacobian_torch(self, y):
+    def jacobian_torch(self, y, retain_graph=False):
         """
         :param y: Shape (N, c).
+        :param retain_graph: If False, does not retain graph after call.
         :return: J with shape (N*c, size(params)).
         """
         self.net.zero_grad()
@@ -111,7 +114,7 @@ class BaseOptimizer:
             for j, c in enumerate(yi):  # Classes.
                 # Free the graph at the last backward call.
                 if i == y.size(0) - 1 and j == yi.size(0) - 1:
-                    c.backward(retain_graph=False)
+                    c.backward(retain_graph=retain_graph)
                 else:
                     c.backward(retain_graph=True)
 
