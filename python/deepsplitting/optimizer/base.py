@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import math
 from enum import Enum, auto
 
 import deepsplitting.utils.global_config as global_config
@@ -58,9 +59,6 @@ class BaseOptimizer:
         pass
 
     def step(self, inputs, labels):
-        raise NotImplementedError
-
-    def eval_print(self, inputs, labels):
         raise NotImplementedError
 
     def save_params(self):
@@ -158,3 +156,19 @@ class BaseOptimizer:
 
     def zero_grad(self):
         self.net.zero_grad()
+
+    def forward(self, inputs, chunk_size_factor=None, requires_grad=False):
+        N = inputs.size(0)
+
+        if chunk_size_factor is None:
+            chunk_size_factor = 1
+
+        chunk_size = int(chunk_size_factor * N)
+
+        y = torch.empty((N, self.net.output_dim), device=global_config.cfg.device)
+
+        for i in range(0, N, chunk_size):
+            with torch.set_grad_enabled(requires_grad):
+                y[i:i + chunk_size] = self.net(inputs[i:i + chunk_size])
+
+        return y

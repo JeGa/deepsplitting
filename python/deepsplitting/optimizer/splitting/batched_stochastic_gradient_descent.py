@@ -49,43 +49,6 @@ def step_fullbatch(self, inputs, labels):
     return L_data_current.item(), L_data_new.item()
 
 
-def primal2_levmarq_batched_Mfac(self, inputs, labels, index, subindex):
-    i = 0
-    max_iter = 1
-
-    while True:
-        i += 1
-
-        L, _, _, _, y = self.augmented_lagrangian(inputs, labels)
-
-        y_batch = y[index]
-        J1 = self.jacobian_torch(y_batch)
-
-        # J2 =
-        J2 = self.jacobian_torch(y[index[subindex]])
-
-        while True:
-            A = (J2.t().mm(J2) + self.hyperparams.M * torch.eye(J2.size(1), device=global_config.cfg.device))
-            B = J1.t().mm(torch.reshape(y_batch, (-1, 1)))
-
-            step, _ = torch.gesv(B, A)
-            new_params = self.vec_to_params_update(step, from_numpy=False)
-
-            L_new, _, _, _, y = self.augmented_lagrangian(inputs, labels, new_params)
-
-            logging.debug("levmarq_step: L={:.2f}, L_new={:.2f}, M={}".format(L, L_new, self.hyperparams.M))
-
-            if L < L_new:
-                self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
-            else:
-                self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
-                self.restore_params(new_params)
-                break
-
-        if i == max_iter:
-            break
-
-
 def primal2_levmarq_batched_armijo(self, inputs, labels):
     raise NotImplementedError()
 

@@ -46,24 +46,23 @@ class Optimizer_damping(Optimizer):
 
             data_loss_batch, lagrangian_batch = self.eval(inputs, labels)
 
-            loss_batchstep.append(data_loss_batch.item())
-            lagrangian_batchstep.append(lagrangian_batch.item())
+            loss_batchstep.append(data_loss_batch)
+            lagrangian_batchstep.append(lagrangian_batch)
 
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}, Lagrangian = {:.6f}".format(
                 type(self).__module__, i, max_steps, data_loss_batch, lagrangian_batch))
 
-        loss_new, lagrangian_new = self.eval(inputs, labels)
+            loss_new, lagrangian_new = self.eval(inputs, labels)
 
-        if lagrangian_new > lagrangian_current:
-            self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
+            if lagrangian_new > lagrangian_current:
+                self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
 
-        return (loss_current.item(), loss_new.item(),
-                lagrangian_current.item(), lagrangian_new.item(),
-                loss_batchstep, lagrangian_batchstep)
+        return loss_current, loss_new, lagrangian_current, lagrangian_new, loss_batchstep, lagrangian_batchstep
 
-    def subsampled_jacobians(self, index, subindex, y):
-        y_batch = y[index]
-        J1 = self.jacobian_torch(y_batch)
+    def subsampled_jacobians(self, index, subindex, inputs):
+        y_batch = self.forward(inputs[index], requires_grad=True)
+
+        J1 = self.jacobian_torch(y_batch).detach()
 
         y_subsampled = y_batch[subindex]
 
@@ -72,7 +71,7 @@ class Optimizer_damping(Optimizer):
 
         J2 = J1[subsampled_indices, :]
 
-        return J1, J2, y_batch, y_subsampled
+        return J1, J2, y_batch.detach(), y_subsampled.detach()
 
     def linear_system_B(self, index, y_batch, J1):
         R = self.v.detach()[index] - self.lam.detach()[index] / self.hyperparams.rho - y_batch
@@ -82,39 +81,54 @@ class Optimizer_damping(Optimizer):
 
         return B
 
+    def cg_step(self, index, subindex, inputs):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+
+        B = self.linear_system_B(index, y_batch, J1)
+
+        # Initial guess.
+        x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
+
+        # Gauss-Newton: (J2.T * J2) * x - B = 0
+        # This is Gauss-Newton: new_params = self.cg_step(x, lambda p: J2.t().matmul(J2.matmul(p)), B)
+
+        # Levenberg-Marquardt: (J2.T * J2 + M * I) * x - B = 0
+
+        def A(p):
+            return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
+
+        return self.cg_solve(x, A, B)
+
+    def gd_step(self, index, subindex, inputs):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+
+        B = self.linear_system_B(index, y_batch, J1)
+
+        return self.vec_to_params_update(self.hyperparams.rho * 1e-3 * B, from_numpy=False)
+
     def primal2(self, inputs, labels, index, subindex):
         max_iter = 1
 
         for i in range(1, max_iter + 1):
-            lagrangian, _, _, _, y = self.augmented_lagrangian(inputs, labels)
+            lagrangian, _, _, _, _ = self.augmented_lagrangian(inputs, labels)
 
-            J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, y)
+            while True:
+                new_params = self.cg_step(index, subindex, inputs)
 
-            B = self.linear_system_B(index, y_batch, J1)
+                lagrangian_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, new_params)
 
-            # Initial guess.
-            x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
+                if lagrangian < lagrangian_new:
+                    self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
+                else:
+                    self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                    self.restore_params(new_params)
+                    break
 
-            # Gauss-Newton: (J2.T * J2) * x - B = 0
-            # This is Gauss-Newton: new_params = self.cg_step(x, lambda p: J2.t().matmul(J2.matmul(p)), B)
+    def primal2_gd(self, inputs, index, subindex):
+        new_params = self.gd_step(index, subindex, inputs)
+        self.restore_params(new_params)
 
-            # Levenberg-Marquardt: (J2.T * J2 + M * I) * x - B = 0
-
-            def A(p):
-                return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
-
-            new_params = self.cg_step(x, A, B)
-
-            lagrangian_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, new_params)
-
-            if lagrangian < lagrangian_new:
-                self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
-            else:
-                self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
-                self.restore_params(new_params)
-                break
-
-    def cg_step(self, x, A, B):
+    def cg_solve(self, x, A, B):
         """
         Solve for: Ax = B with linear mapping A.
 

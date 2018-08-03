@@ -66,18 +66,22 @@ def plot_loss_curve(losses, title=''):
     plt.show()
 
 
-def plot_summary(summary, timer, name, title='', folder='results'):
+def plot_summary(summary, timer, optimizer, params, filename, folder):
     marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
 
     plt.figure()
-
-    plt.title(title)
+    plt.title(params.csv_format())
 
     every = 4
+    hyperparams_y = 1.5
 
-    for key, losses in summary.items():
-        plt.plot(losses, label=key + time_str(key, timer),
-                 linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
+    for optimizer_key, all_losses in summary.items():
+        for loss_key, losses in all_losses.items():
+            plt.plot(losses, label=optimizer_key + ' ' + loss_key + ' ' + time_str(optimizer_key, timer) + 's',
+                     linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
+
+        plt.text(-1, hyperparams_y, optimizer_key + ': ' + str(optimizer[optimizer_key].hyperparams.csv_format()))
+        hyperparams_y -= -0.5
 
         every += 1
 
@@ -85,7 +89,7 @@ def plot_summary(summary, timer, name, title='', folder='results'):
     plt.xlabel('Iteration')
     plt.ylabel('Objective')
 
-    plt.savefig(os.path.join(folder, name + '.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(folder, filename + '.pdf'), bbox_inches='tight')
 
 
 def cifarshow():

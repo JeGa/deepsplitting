@@ -61,7 +61,8 @@ class Optimizer(BaseOptimizer):
         else:
             saved_params = None
 
-        y = self.net(inputs)
+        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
+
         data_loss = self.net.criterion(y, labels)
 
         lagrangian_data_loss = self.net.criterion(self.v, labels)
@@ -74,19 +75,19 @@ class Optimizer(BaseOptimizer):
         if params is not None and saved_params is not None:
             self.restore_params(saved_params)
 
-        return lagrangian, data_loss, lagrangian_data_loss, constraint_norm, y
+        return lagrangian.item(), data_loss.item(), lagrangian_data_loss.item(), constraint_norm.item(), y
 
     @staticmethod
     def batches(indices, batch_size):
         return (indices[i:i + batch_size] for i in range(0, indices.size(0), batch_size))
 
     def primal1(self, inputs, labels):
-        y = self.net(inputs).detach()
+        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor).detach()
 
         self.v = self.primal1_loss(y, self.lam.detach(), labels, self.hyperparams.rho, self.net.criterion)
 
     def dual(self, inputs):
-        y = self.net(inputs).detach()
+        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor).detach()
 
         self.lam = self.lam.detach() + self.hyperparams.rho * (y - self.v)
 
