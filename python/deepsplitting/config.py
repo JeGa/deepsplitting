@@ -13,8 +13,8 @@ params = Params(
 
 local_cfg = global_config.GlobalParams(
     device=torch.device('cpu'),
-    training_batch_size=3,
-    epochs=10,
+    training_batch_size=10,
+    epochs=20,
     training_samples=10,  # Take subset of training set.
     results_folder='results',
     results_subfolders={'data': 'data'}
@@ -30,7 +30,7 @@ server_cfg = global_config.GlobalParams(
 )
 
 optimizer_params_ls = {
-    'sbLM_damping': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0, subsample_factor=0.5),
+    'sbLM_damping': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0, subsample_factor=1, cg_iter=8),
 
     # 'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     # 'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
