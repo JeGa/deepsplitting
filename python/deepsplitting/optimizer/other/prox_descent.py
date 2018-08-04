@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from scipy.optimize import minimize
 
-from .base import BaseOptimizer
-from .base import Hyperparams
+from deepsplitting.optimizer.base import BaseOptimizer
+from deepsplitting.optimizer.base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):

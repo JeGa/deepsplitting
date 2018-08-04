@@ -2,7 +2,7 @@ import torch
 from torch.nn import functional as F
 import scipy
 
-from .base import BaseOptimizer
+from deepsplitting.optimizer.base import BaseOptimizer
 import deepsplitting.optimizer.misc as misc
 
 

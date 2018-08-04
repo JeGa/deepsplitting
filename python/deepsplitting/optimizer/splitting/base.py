@@ -33,6 +33,7 @@ class Optimizer(BaseOptimizer):
         if initializer is Initializer.DEBUG:
             self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
         else:
+            torch.manual_seed(123)
             self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
 
     def init(self, inputs, labels, initializer, parameters=None):
