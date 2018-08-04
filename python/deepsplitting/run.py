@@ -13,7 +13,9 @@ import deepsplitting.config as config_file
 import deepsplitting.utils.global_config as global_config
 
 import deepsplitting.optimizer.splitting.batched_levenberg_marquardt as sbLM
+import deepsplitting.optimizer.splitting.batched_gradient_descent as sbGD
 import deepsplitting.optimizer.gd.gradient_descent as GD
+
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -31,17 +33,22 @@ def main():
         raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
-                                               hyperparams=optimizer_params['sbLM_damping']),
+        # 'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
+        #                                       hyperparams=optimizer_params['sbLM_damping']),
+
+        'sbLM_armijo': sbLM.Optimizer_armijo(net, N=training_batch_size,
+                                             hyperparams=optimizer_params['sbLM_armijo']),
+
+        # 'sbGD': sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD']),
 
         # 'LLC_fix': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC_fix']),
         # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         # 'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        #'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
+        # 'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
         # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
     }
 
-    #trainrun.train(trainloader, )
+    # trainrun.train(trainloader, )
 
     # if params.loss_type == 'ls':
     #    optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])

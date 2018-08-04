@@ -20,18 +20,19 @@ class Optimizer(BaseOptimizer):
         return loss.item(), self.net.loss(inputs, labels).item()
 
     def _armijo_step(self, params, grads, step_direction, inputs, labels):
+        current_loss = self.net.loss(inputs, labels)
+
         k = 1
 
         while True:
             sigma = (self.hyperparams.beta ** k) / self.hyperparams.beta
 
-            if self._check_armijo(sigma, params, grads, step_direction, inputs, labels):
+            if self._check_armijo(sigma, params, grads, step_direction, inputs, labels, current_loss):
                 break
 
             k = k + 1
 
-    def _check_armijo(self, sigma, params, grads, step_direction, inputs, labels):
-        current_loss = self.net.loss(inputs, labels)
+    def _check_armijo(self, sigma, params, grads, step_direction, inputs, labels, current_loss):
         current_params = self.save_params()
 
         for p, s in zip(params, step_direction):

@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import logging
-import scipy
 
 import deepsplitting.utils.global_config as global_config
 
@@ -54,12 +53,20 @@ class Optimizer(BaseOptimizer):
 
         return data_loss, lagrangian
 
-    def augmented_lagrangian(self, inputs, labels, params=None):
+    def load(self, params):
         if params is not None:
             saved_params = self.save_params()
             self.restore_params(params)
         else:
             saved_params = None
+        return saved_params
+
+    def restore(self, saved_params, params):
+        if params is not None and saved_params is not None:
+            self.restore_params(saved_params)
+
+    def augmented_lagrangian(self, inputs, labels, params=None):
+        saved_params = self.load(params)
 
         y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
 
@@ -72,10 +79,21 @@ class Optimizer(BaseOptimizer):
         lagrangian = lagrangian_data_loss + torch.mul(self.lam, constraint).sum() + (
                 self.hyperparams.rho / 2) * constraint_norm
 
-        if params is not None and saved_params is not None:
-            self.restore_params(saved_params)
+        self.restore(saved_params, params)
 
         return lagrangian.item(), data_loss.item(), lagrangian_data_loss.item(), constraint_norm.item(), y
+
+    def primal2_loss(self, inputs, params=None):
+        saved_params = self.load(params)
+
+        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
+
+        rho = self.hyperparams.rho
+        loss = (rho / 2) * torch.pow(y - self.v + (1 / rho) * self.lam, 2).sum()
+
+        self.restore(saved_params, params)
+
+        return loss
 
     @staticmethod
     def batches(indices, batch_size):

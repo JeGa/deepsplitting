@@ -2,62 +2,16 @@
 # - armijo
 # - damping
 
-# LM with CG + subsampling.
-
 import torch
-import logging
-import math
 
 import deepsplitting.utils.global_config as global_config
 
-from deepsplitting.optimizer.splitting.base import Optimizer
+from deepsplitting.optimizer.splitting.batched_primal2 import Optimizer_batched
 
 
-class Optimizer_damping(Optimizer):
+class Optimizer(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
-        super(Optimizer_damping, self).__init__(net, N, hyperparams)
-
-    def step(self, inputs, labels):
-        """
-        This function does the batching. The given inputs and labels should be sampled in full batch and always be in
-        the same order.
-        """
-        loss_current, lagrangian_current = self.eval(inputs, labels)
-
-        batch_size = global_config.cfg.training_batch_size
-        subsample_size = int(self.hyperparams.subsample_factor * batch_size)
-
-        indices = torch.randperm(self.N)
-
-        loss_batchstep = list()
-        lagrangian_batchstep = list()
-
-        max_steps = int(math.ceil(len(indices) / batch_size))
-        i = 0
-
-        for index in self.batches(indices, batch_size):
-            i += 1
-
-            subindex = torch.randperm(batch_size)[0:subsample_size]
-
-            self.primal2(inputs, labels, index, subindex)
-            self.primal1(inputs, labels)
-            self.dual(inputs)
-
-            data_loss_batch, lagrangian_batch = self.eval(inputs, labels)
-
-            loss_batchstep.append(data_loss_batch)
-            lagrangian_batchstep.append(lagrangian_batch)
-
-            logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}, Lagrangian = {:.6f}".format(
-                type(self).__module__, i, max_steps, data_loss_batch, lagrangian_batch))
-
-            loss_new, lagrangian_new = self.eval(inputs, labels)
-
-            if lagrangian_new > lagrangian_current:
-                self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
-
-        return loss_current, loss_new, lagrangian_current, lagrangian_new, loss_batchstep, lagrangian_batchstep
+        super(Optimizer, self).__init__(net, N, hyperparams)
 
     def subsampled_jacobians(self, index, subindex, inputs):
         y_batch = self.forward(inputs[index], requires_grad=True)
@@ -73,62 +27,7 @@ class Optimizer_damping(Optimizer):
 
         return J1, J2, y_batch.detach(), y_subsampled.detach()
 
-    def linear_system_B(self, index, y_batch, J1):
-        R = self.v.detach()[index] - self.lam.detach()[index] / self.hyperparams.rho - y_batch
-        R = torch.reshape(R, (-1, 1))
-
-        B = J1.t().matmul(R)
-
-        return B
-
-    def cg_step(self, index, subindex, inputs):
-        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
-
-        B = self.linear_system_B(index, y_batch, J1)
-
-        # Initial guess.
-        x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
-
-        # Gauss-Newton: (J2.T * J2) * x - B = 0
-        # This is Gauss-Newton: new_params = self.cg_step(x, lambda p: J2.t().matmul(J2.matmul(p)), B)
-
-        # Levenberg-Marquardt: (J2.T * J2 + M * I) * x - B = 0
-
-        def A(p):
-            return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
-
-        return self.cg_solve(x, A, B)
-
-    def gd_step(self, index, subindex, inputs):
-        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
-
-        B = self.linear_system_B(index, y_batch, J1)
-
-        return self.vec_to_params_update(self.hyperparams.rho * 1e-3 * B, from_numpy=False)
-
-    def primal2(self, inputs, labels, index, subindex):
-        max_iter = 1
-
-        for i in range(1, max_iter + 1):
-            lagrangian, _, _, _, _ = self.augmented_lagrangian(inputs, labels)
-
-            while True:
-                new_params = self.cg_step(index, subindex, inputs)
-
-                lagrangian_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, new_params)
-
-                if lagrangian < lagrangian_new:
-                    self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
-                else:
-                    self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
-                    self.restore_params(new_params)
-                    break
-
-    def primal2_gd(self, inputs, index, subindex):
-        new_params = self.gd_step(index, subindex, inputs)
-        self.restore_params(new_params)
-
-    def cg_solve(self, x, A, B):
+    def cg_solve(self, x, A, B, return_step=False):
         """
         Solve for: Ax = B with linear mapping A.
 
@@ -149,4 +48,124 @@ class Optimizer_damping(Optimizer):
 
             r = r_new
 
-        return self.vec_to_params_update(x, from_numpy=False)
+        if return_step:
+            return self.vec_to_params_update(x, from_numpy=False), x
+        else:
+            return self.vec_to_params_update(x, from_numpy=False)
+
+
+class Optimizer_damping(Optimizer):
+    def __init__(self, net, N, hyperparams):
+        super(Optimizer_damping, self).__init__(net, N, hyperparams)
+
+    def primal2(self, inputs, labels, index, subindex):
+        max_iter = 1
+
+        for i in range(1, max_iter + 1):
+            lagrangian, _, _, _, _ = self.augmented_lagrangian(inputs, labels)
+
+            while True:
+                new_params = self.cg_step(index, subindex, inputs)
+
+                lagrangian_new, _, _, _, _ = self.augmented_lagrangian(inputs, labels, new_params)
+
+                if lagrangian < lagrangian_new:
+                    self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
+                else:
+                    self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                    self.restore_params(new_params)
+                    break
+
+    def cg_step(self, index, subindex, inputs):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+
+        B, _ = self.linear_system_B(index, y_batch, J1)
+
+        # Initial guess.
+        x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
+
+        # Gauss-Newton: (J2.T * J2) * x - B = 0
+        # This is Gauss-Newton: new_params = self.cg_step(x, lambda p: J2.t().matmul(J2.matmul(p)), B)
+
+        # Levenberg-Marquardt: (J2.T * J2 + M * I) * x - B = 0
+
+        def A(p):
+            return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
+
+        return self.cg_solve(x, A, B)
+
+
+class Optimizer_armijo(Optimizer):
+    def __init__(self, net, N, hyperparams):
+        super(Optimizer_armijo, self).__init__(net, N, hyperparams)
+
+    def lmstep(self, inputs, index, subindex, delta):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+        B, R = self.linear_system_B(index, y_batch, J1)  # B is grad, R is residual.
+
+        # Initial guess.
+        x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
+
+        mu = torch.norm(R) ** delta
+
+        def A(p):
+            return J2.t().matmul(J2.matmul(p)) + mu * p
+
+        new_params, step = self.cg_solve(x, A, B, return_step=True)
+
+        # Required for armijo.
+        dderiv = self.hyperparams.rho * B.t().matmul(step)
+
+        return new_params, step, B, dderiv
+
+    def primal2(self, inputs, labels, index, subindex):
+        max_iter = 1
+
+        eps = 1e-5
+
+        delta = self.hyperparams.delta
+        eta = self.hyperparams.eta
+
+        beta = self.hyperparams.beta
+        gamma = self.hyperparams.gamma
+
+        for i in range(1, max_iter + 1):
+            loss_current = self.primal2_loss(inputs)
+
+            new_params, step, B, dderiv = self.lmstep(inputs, index, subindex, delta)
+
+            if torch.norm(B) <= eps:
+                break
+
+            loss_new = self.primal2_loss(inputs, new_params)
+
+            if torch.norm(loss_new) <= eta * torch.norm(loss_current):  # TODO: Lagrangian?
+                self.restore_params(new_params)
+            else:
+                self.armijo(inputs, step, beta, gamma, loss_current, dderiv)
+
+    def armijo(self, inputs, step, beta, gamma, loss_current, dderiv):
+        k = 1
+
+        while True:
+            sigma = (beta ** k) / beta
+
+            if self.check_armijo(inputs, step, sigma, gamma, loss_current, dderiv):
+                break
+
+            k = k + 1
+
+    def check_armijo(self, inputs, step, sigma, gamma, loss_current, dderiv):
+        current_params = self.save_params()
+
+        new_params = self.vec_to_params_update(sigma * step, from_numpy=False)
+        self.restore_params(new_params)
+
+        loss_new = self.primal2_loss(inputs)
+
+        if loss_new - loss_current <= sigma * gamma * dderiv:
+            return True
+
+        self.restore_params(current_params)
+
+        return False

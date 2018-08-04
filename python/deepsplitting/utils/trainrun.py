@@ -29,16 +29,13 @@ def train_llc(trainloader, optimizer, params=None):
     for epoch in range(global_config.cfg.epochs):
         optimizer.zero_grad()
 
-        (current_data_loss, new_data_loss,
-         current_lagrangian, new_lagrangian,
-         data_loss_batchstep, lagrangian_batchstep) = optimizer.step(inputs, labels)
+        data_loss_batchstep, lagrangian_batchstep = optimizer.step(inputs, labels)
 
         data_loss += data_loss_batchstep
         lagrangian += lagrangian_batchstep
 
         if epoch % log_iter == log_iter - 1:
-            logging.info("{}: [{}/{}] Loss = {:.6f}, Lagrangian = {:.6f}".format(
-                type(optimizer).__module__, epoch + 1, global_config.cfg.epochs, current_data_loss, current_lagrangian))
+            logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
 
     return data_loss, lagrangian
 
