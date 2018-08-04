@@ -73,15 +73,16 @@ def plot_summary(summary, timer, optimizer, params, filename, folder):
     plt.title(params.csv_format())
 
     every = 4
-    hyperparams_y = 1.5
+    hyperparams_y = -0.1
 
     for optimizer_key, all_losses in summary.items():
         for loss_key, losses in all_losses.items():
             plt.plot(losses, label=optimizer_key + ' ' + loss_key + ' ' + time_str(optimizer_key, timer) + 's',
                      linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
 
-        plt.text(-1, hyperparams_y, optimizer_key + ': ' + str(optimizer[optimizer_key].hyperparams.csv_format()))
-        hyperparams_y -= -0.5
+        plt.text(0, hyperparams_y, optimizer_key + ': ' + str(optimizer[optimizer_key].hyperparams.csv_format()),
+                 transform=plt.gcf().transFigure)
+        hyperparams_y -= -0.03
 
         every += 1
 

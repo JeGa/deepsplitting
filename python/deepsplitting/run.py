@@ -33,8 +33,8 @@ def main():
         raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        # 'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
-        #                                       hyperparams=optimizer_params['sbLM_damping']),
+        'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
+                                               hyperparams=optimizer_params['sbLM_damping']),
 
         'sbLM_armijo': sbLM.Optimizer_armijo(net, N=training_batch_size,
                                              hyperparams=optimizer_params['sbLM_armijo']),
