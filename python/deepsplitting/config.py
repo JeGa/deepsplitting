@@ -57,7 +57,11 @@ optimizer_params_ls = {
 
     'sbGD': Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3),
 
-    'bLM_damping': Hyperparams(subsample_factor=1, cg_iter=10, M=0.001, factor=10)
+    'bLM_damping': Hyperparams(subsample_factor=1, cg_iter=10,
+                               M=0.001, factor=10),
+
+    'bLM_armijo': Hyperparams(subsample_factor=1, cg_iter=10,
+                              delta=1, eta=0.5, beta=0.5, gamma=10e-4)
 
     # 'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     # 'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),

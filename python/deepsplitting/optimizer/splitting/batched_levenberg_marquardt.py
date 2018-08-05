@@ -138,7 +138,7 @@ class Optimizer_vanstep(Optimizer_batched):
         B, R = self.linear_system_B(index, y_batch, J1)  # B is grad, R is residual.
 
         # Initial guess.
-        x = torch.zeros(J2.size(1), 1, device=global_config.cfg.device)
+        x = torch.zeros(J2.size(1), 1, dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
         mu = torch.norm(R) ** delta
 
