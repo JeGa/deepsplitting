@@ -1,10 +1,9 @@
 import torch
 import numpy as np
-import math
 from enum import Enum, auto
 
 import deepsplitting.utils.global_config as global_config
-from deepsplitting.utils.misc import Params
+from deepsplitting.utils.global_config import Params
 
 
 class Hyperparams(Params):

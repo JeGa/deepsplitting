@@ -22,12 +22,12 @@ def main():
 
     deepsplitting.utils.misc.make_results_folder(global_config.cfg)
 
-    net, trainloader, training_batch_size, classes = initializer.cnn_mnist(config_file.params.loss_type,
-                                                                           config_file.params.activation_type)
+    net, trainloader, training_batch_size, classes = initializer.cnn_mnist(global_config.cfg.loss_type,
+                                                                           global_config.cfg.activation_type)
 
-    if config_file.params.loss_type == 'ls':
+    if global_config.cfg.loss_type == 'ls':
         optimizer_params = config_file.optimizer_params_ls
-    elif config_file.params.loss_type == 'nll':
+    elif global_config.cfg.loss_type == 'nll':
         optimizer_params = config_file.optimizer_params_nll
     else:
         raise ValueError("Unsupported loss type.")
@@ -59,7 +59,7 @@ def main():
     # To have the same network parameter initialization for all nets.
     net_init_parameters = next(iter(optimizer.values())).save_params()
 
-    train_all(optimizer, trainloader, config_file.params, net_init_parameters, classes)
+    train_all(optimizer, trainloader, net_init_parameters, classes)
 
 
 def train(opt, key, trainloader, net_init_parameters, summary):
@@ -74,7 +74,7 @@ def train(opt, key, trainloader, net_init_parameters, summary):
     summary[key] = results
 
 
-def train_all(optimizer, trainloader, params, net_init_parameters, classes):
+def train_all(optimizer, trainloader, net_init_parameters, classes):
     summary = {}
     timer = timing.Timing()
 
@@ -82,13 +82,13 @@ def train_all(optimizer, trainloader, params, net_init_parameters, classes):
         with timer(key):
             train(opt, key, trainloader, net_init_parameters, summary)
 
-        if params.loss_type == 'ls':
+        if global_config.cfg.loss_type == 'ls':
             testrun.test_ls(opt.net, trainloader, classes)
-        elif params.loss_type == 'nll':
+        elif global_config.cfg.loss_type == 'nll':
             testrun.test_nll(opt.net, trainloader)
 
-    deepsplitting.utils.misc.plot_summary(summary, timer, optimizer, params,
-                                          filename='results', folder=global_config.cfg.results_folder)
+    deepsplitting.utils.misc.plot_summary(summary, timer, optimizer, filename='results',
+                                          folder=global_config.cfg.results_folder)
 
     # TODO save_summary(summary, timer, optimizer_params)
 

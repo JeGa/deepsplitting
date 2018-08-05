@@ -3,18 +3,13 @@ import torch
 import deepsplitting.utils.global_config as global_config
 
 from deepsplitting.optimizer.base import Hyperparams
-from deepsplitting.utils.misc import Params
-
-# TODO: merge this to global config.
-params = Params(
-    loss_type='ls',  # 'ls' or 'nll'.
-    activation_type='relu',  # 'relu' or 'sigmoid'.
-)
 
 local_cfg = global_config.GlobalParams(
+    loss_type='ls',  # 'ls' or 'nll'.
+    activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
     training_batch_size=10,
-    epochs=20,
+    epochs=5,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
     results_folder='results',
@@ -24,6 +19,8 @@ local_cfg = global_config.GlobalParams(
 )
 
 server_cfg = global_config.GlobalParams(
+    loss_type='ls',  # 'ls' or 'nll'.
+    activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
     training_batch_size=50,
     epochs=2,
@@ -38,12 +35,12 @@ server_cfg = global_config.GlobalParams(
 # config_file.server_cfg or config_file.local_cfg.
 global_config.cfg = local_cfg
 
-if not isinstance(global_config.cfg, Params):
+if not isinstance(global_config.cfg, global_config.GlobalParams):
     raise ValueError("Global config wrong instance.")
 
 # stepsize for sbGD
 optimizer_params_ls = {
-    'sbLM_damping': Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=20, M=0.001, factor=10),
+    'sbLM_damping': Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=30, M=0.001, factor=10),
 
     'sbLM_armijo': Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=10,
                                delta=1, eta=0.5, beta=0.5, gamma=10e-4),

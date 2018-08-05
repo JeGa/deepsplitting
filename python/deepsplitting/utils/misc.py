@@ -10,13 +10,7 @@ import datetime
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
 
-
-class Params:
-    def __init__(self, **params):
-        self.__dict__.update(params)
-
-    def csv_format(self):
-        return ["{}={}".format(key, str(v)) for key, v in self.__dict__.items()]
+import deepsplitting.utils.global_config as global_cfg
 
 
 def imshow(img, factor=1 / (2 + 0.5)):
@@ -66,11 +60,11 @@ def plot_loss_curve(losses, title=''):
     plt.show()
 
 
-def plot_summary(summary, timer, optimizer, params, filename, folder):
+def plot_summary(summary, timer, optimizer, filename, folder):
     marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
 
     plt.figure()
-    plt.title(params.csv_format())
+    plt.title("Loss: {}, activation: {}".format(global_cfg.cfg.loss_type, global_cfg.cfg.activation_type))
 
     every = 4
     hyperparams_y = -0.1
