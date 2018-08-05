@@ -5,53 +5,8 @@ import deepsplitting.utils.global_config as global_config
 from deepsplitting.optimizer.splitting.batched_primal2 import Optimizer_batched
 
 
-class Optimizer(Optimizer_batched):
-    def __init__(self, net, N, hyperparams):
-        super(Optimizer, self).__init__(net, N, hyperparams)
-
-    def subsampled_jacobians(self, index, subindex, inputs):
-        y_batch = self.forward(inputs[index], requires_grad=True)
-
-        J1 = self.jacobian_torch(y_batch).detach()
-
-        y_subsampled = y_batch[subindex]
-
-        c = y_subsampled.size(1)
-        subsampled_indices = [item for j in subindex for item in range(j * c, j * c + c)]
-
-        J2 = J1[subsampled_indices, :]
-
-        return J1, J2, y_batch.detach(), y_subsampled.detach()
-
-    def cg_solve(self, x, A, B, return_step=False):
-        """
-        Solve for: Ax = B with linear mapping A.
-
-        The argument A should be a function. It is often better to calculate e.g. Ax = A1*A2*x using matrix vector
-        products instead of calculating A directly.
-        """
-        r = B - A(x)
-        p = r
-
-        for i in range(self.hyperparams.cg_iter):
-            alpha = (r.t().matmul(r)) / (p.t().matmul(A(p)))
-
-            x = x + alpha * p
-            r_new = r - alpha * A(p)
-
-            beta = (r_new.t().matmul(r_new)) / (r.t().matmul(r))
-            p = r_new + beta * p
-
-            r = r_new
-
-        if return_step:
-            return self.vec_to_params_update(x, from_numpy=False), x
-        else:
-            return self.vec_to_params_update(x, from_numpy=False)
-
-
 # TODO: Damping which loss?
-class Optimizer_damping(Optimizer):
+class Optimizer_damping(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
         super(Optimizer_damping, self).__init__(net, N, hyperparams)
 
@@ -60,7 +15,6 @@ class Optimizer_damping(Optimizer):
 
         for i in range(1, max_iter + 1):
             # lagrangian, _, _, _, _ = self.augmented_lagrangian(inputs, labels)
-
             primal2_loss = self.primal2_loss(inputs)
 
             while True:
@@ -85,6 +39,9 @@ class Optimizer_damping(Optimizer):
         # Initial guess.
         x = torch.zeros(J2.size(1), 1, dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
+        # L(W) = (rho/2) * norm(f(W) - r)^2
+        # L_lin(d) = (rho/2) * norm(J*d - (r - f(W))^2
+
         # Gauss-Newton: (J2.T * J2) * x - B = 0
         # This is Gauss-Newton: new_params = self.cg_step(x, lambda p: J2.t().matmul(J2.matmul(p)), B)
 
@@ -96,7 +53,7 @@ class Optimizer_damping(Optimizer):
         return self.cg_solve(x, A, B)
 
 
-class Optimizer_armijo(Optimizer):
+class Optimizer_armijo(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
         super(Optimizer_armijo, self).__init__(net, N, hyperparams)
 
@@ -172,7 +129,7 @@ class Optimizer_armijo(Optimizer):
         return False
 
 
-class Optimizer_vanstep(Optimizer):
+class Optimizer_vanstep(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
         super(Optimizer_vanstep, self).__init__(net, N, hyperparams)
 

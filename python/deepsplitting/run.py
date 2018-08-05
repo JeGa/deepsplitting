@@ -14,6 +14,7 @@ import deepsplitting.utils.global_config as global_config
 
 import deepsplitting.optimizer.splitting.batched_levenberg_marquardt as sbLM
 import deepsplitting.optimizer.splitting.batched_gradient_descent as sbGD
+import deepsplitting.optimizer.lm.batched_levenberg_marquardt as bLM
 import deepsplitting.optimizer.gd.gradient_descent as GD
 
 
@@ -33,14 +34,17 @@ def main():
         raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
-                                               hyperparams=optimizer_params['sbLM_damping']),
+        # 'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
+        #                                       hyperparams=optimizer_params['sbLM_damping']),
 
         # 'sbLM_armijo': sbLM.Optimizer_armijo(net, N=training_batch_size,
         #                                     hyperparams=optimizer_params['sbLM_armijo']),
 
         # 'sbLM_vanstep': sbLM.Optimizer_vanstep(net, N=training_batch_size,
         #                                      hyperparams=optimizer_params['sbLM_vanstep']),
+
+        'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
+                                             hyperparams=optimizer_params['bLM_damping']),
 
         # 'sbGD': sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD']),
 
@@ -62,13 +66,23 @@ def main():
     train_all(optimizer, trainloader, net_init_parameters, classes)
 
 
-def train(opt, key, trainloader, net_init_parameters, summary):
+def train_splitting(opt, key, trainloader, net_init_parameters, summary):
     # TODO: if deepsplitting.utils.misc.is_llc(opt):
-    data_loss, lagrangian = trainrun.train_llc(trainloader, opt, net_init_parameters)
+    data_loss, lagrangian = trainrun.train_splitting(trainloader, opt, net_init_parameters)
 
     results = {
         'data_loss': data_loss,
         'lagrangian': lagrangian
+    }
+
+    summary[key] = results
+
+
+def train_lm(opt, key, trainloader, net_init_parameters, summary):
+    data_loss = trainrun.train_LM(trainloader, opt, net_init_parameters)
+
+    results = {
+        'data_loss': data_loss,
     }
 
     summary[key] = results
@@ -80,7 +94,8 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
 
     for key, opt in optimizer.items():
         with timer(key):
-            train(opt, key, trainloader, net_init_parameters, summary)
+            # train_splitting(opt, key, trainloader, net_init_parameters, summary)
+            train_lm(opt, key, trainloader, net_init_parameters, summary)
 
         if global_config.cfg.loss_type == 'ls':
             testrun.test_ls(opt.net, trainloader, classes)

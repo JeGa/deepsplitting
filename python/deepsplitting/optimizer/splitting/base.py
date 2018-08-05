@@ -60,18 +60,6 @@ class Optimizer(BaseOptimizer):
 
         return data_loss, lagrangian
 
-    def load(self, params):
-        if params is not None:
-            saved_params = self.save_params()
-            self.restore_params(params)
-        else:
-            saved_params = None
-        return saved_params
-
-    def restore(self, saved_params, params):
-        if params is not None and saved_params is not None:
-            self.restore_params(saved_params)
-
     def augmented_lagrangian(self, inputs, labels, params=None):
         saved_params = self.load(params)
 
@@ -86,7 +74,7 @@ class Optimizer(BaseOptimizer):
         lagrangian = lagrangian_data_loss + torch.mul(self.lam, constraint).sum() + (
                 self.hyperparams.rho / 2) * constraint_norm
 
-        self.restore(saved_params, params)
+        self.restore(saved_params)
 
         return lagrangian.item(), data_loss.item(), lagrangian_data_loss.item(), constraint_norm.item(), y
 
@@ -98,13 +86,9 @@ class Optimizer(BaseOptimizer):
         rho = self.hyperparams.rho
         loss = (rho / 2) * torch.pow(y - self.v + (1 / rho) * self.lam, 2).sum()
 
-        self.restore(saved_params, params)
+        self.restore(saved_params)
 
         return loss
-
-    @staticmethod
-    def batches(indices, batch_size):
-        return (indices[i:i + batch_size] for i in range(0, indices.size(0), batch_size))
 
     def primal1(self, inputs, labels):
         y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor).detach()

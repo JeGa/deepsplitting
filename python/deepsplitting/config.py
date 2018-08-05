@@ -8,28 +8,34 @@ local_cfg = global_config.GlobalParams(
     loss_type='ls',  # 'ls' or 'nll'.
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
-    training_batch_size=10,
+
     epochs=5,
+    training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
-    results_folder='results',
-    results_subfolders={'data': 'data'},
+
     datatype=torch.double,
-    seed=123
+    seed=123,
+
+    results_folder='results',
+    results_subfolders={'data': 'data'}
 )
 
 server_cfg = global_config.GlobalParams(
     loss_type='ls',  # 'ls' or 'nll'.
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
+
+    epochs=5,
     training_batch_size=50,
-    epochs=2,
     training_samples=1000,  # Take subset of training set.
-    forward_chunk_size_factor=0.01,
-    results_folder='results',
-    results_subfolders={'data': 'data'},
+    forward_chunk_size_factor=0.1,
+
     datatype=torch.double,
-    seed=123
+    seed=123,
+
+    results_folder='results',
+    results_subfolders={'data': 'data'}
 )
 
 # config_file.server_cfg or config_file.local_cfg.
@@ -40,14 +46,18 @@ if not isinstance(global_config.cfg, global_config.GlobalParams):
 
 # stepsize for sbGD
 optimizer_params_ls = {
-    'sbLM_damping': Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=30, M=0.001, factor=10),
+    'sbLM_damping': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
+                                M=0.001, factor=10),
 
-    'sbLM_armijo': Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=10,
+    'sbLM_armijo': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
                                delta=1, eta=0.5, beta=0.5, gamma=10e-4),
 
-    'sbLM_vanstep': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5),
+    'sbLM_vanstep': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
+                                delta=1, eta=0.5),
 
-    'sbGD': Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3)
+    'sbGD': Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3),
+
+    'bLM_damping': Hyperparams(subsample_factor=1, cg_iter=10, M=0.001, factor=10)
 
     # 'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     # 'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),

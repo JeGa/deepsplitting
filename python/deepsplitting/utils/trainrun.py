@@ -14,7 +14,7 @@ def total_loss(net, loader):
     return loss
 
 
-def train_llc(trainloader, optimizer, params=None):
+def train_splitting(trainloader, optimizer, params=None):
     data_loss = list()
     lagrangian = list()
 
@@ -38,6 +38,30 @@ def train_llc(trainloader, optimizer, params=None):
             logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
 
     return data_loss, lagrangian
+
+
+def train_LM(trainloader, optimizer, params=None):
+    data_loss = list()
+
+    log_iter = 1
+
+    # Full batch. Batching is done by the optimizer.
+    inputs, labels = iter(trainloader).next()
+    inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
+
+    optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
+
+    for epoch in range(global_config.cfg.epochs):
+        optimizer.zero_grad()
+
+        data_loss_batchstep = optimizer.step(inputs, labels)
+
+        data_loss += data_loss_batchstep
+
+        if epoch % log_iter == log_iter - 1:
+            logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
+
+    return data_loss
 
 
 def train(trainloader, optimizer, epochs, params=None):

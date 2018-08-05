@@ -1,6 +1,5 @@
 import torch
 import logging
-import math
 
 import deepsplitting.utils.global_config as global_config
 
@@ -17,11 +16,9 @@ class Optimizer_batched(Optimizer):
         the same order.
         """
         batch_size = global_config.cfg.training_batch_size
-        subsample_size = int(self.hyperparams.subsample_factor * batch_size)
-
-        indices = torch.randperm(self.N)
-
-        max_steps = int(math.ceil(len(indices) / batch_size))
+        indices, subsample_size, max_steps = self.fullbatch_subindex_init(batch_size,
+                                                                          self.hyperparams.subsample_factor,
+                                                                          self.N)
 
         data_loss_batchstep = list()
         lagrangian_batchstep = list()
@@ -34,7 +31,7 @@ class Optimizer_batched(Optimizer):
         lagrangian_old = lagrangian_startepoch
 
         for i, index in enumerate(self.batches(indices, batch_size), 1):
-            subindex = torch.randperm(batch_size)[0:subsample_size]
+            subindex = self.rand_subindex(batch_size, subsample_size)
 
             self.current_batch_iter = i  # For vanishing stepsize.
             self.primal2(inputs, labels, index, subindex)

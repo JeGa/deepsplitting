@@ -1,3 +1,5 @@
+import math
+
 import torch
 import numpy as np
 from enum import Enum, auto
@@ -171,3 +173,73 @@ class BaseOptimizer:
                 y[i:i + chunk_size] = self.net(inputs[i:i + chunk_size])
 
         return y
+
+    def load(self, params):
+        if params is not None:
+            saved_params = self.save_params()
+            self.restore_params(params)
+        else:
+            saved_params = None
+        return saved_params
+
+    def restore(self, saved_params):
+        if saved_params is not None:
+            self.restore_params(saved_params)
+
+    def subsampled_jacobians(self, index, subindex, inputs):
+        y_batch = self.forward(inputs[index], requires_grad=True)
+
+        J1 = self.jacobian_torch(y_batch).detach()
+
+        y_subsampled = y_batch[subindex]
+
+        c = y_subsampled.size(1)
+        subsampled_indices = [item for j in subindex for item in range(j * c, j * c + c)]
+
+        J2 = J1[subsampled_indices, :]
+
+        return J1, J2, y_batch.detach(), y_subsampled.detach()
+
+    def cg_solve(self, x, A, B, return_step=False):
+        """
+        Solve for: Ax = B with linear mapping A.
+
+        The argument A should be a function. It is often better to calculate e.g. Ax = A1*A2*x using matrix vector
+        products instead of calculating A directly.
+        """
+        r = B - A(x)
+        p = r
+
+        for i in range(self.hyperparams.cg_iter):
+            alpha = (r.t().matmul(r)) / (p.t().matmul(A(p)))
+
+            x = x + alpha * p
+            r_new = r - alpha * A(p)
+
+            beta = (r_new.t().matmul(r_new)) / (r.t().matmul(r))
+            p = r_new + beta * p
+
+            r = r_new
+
+        if return_step:
+            return self.vec_to_params_update(x, from_numpy=False), x
+        else:
+            return self.vec_to_params_update(x, from_numpy=False)
+
+    @staticmethod
+    def fullbatch_subindex_init(batch_size, subsample_factor, N):
+        subsample_size = int(subsample_factor * batch_size)
+
+        indices = torch.randperm(N)
+
+        max_steps = int(math.ceil(len(indices) / batch_size))
+
+        return indices, subsample_size, max_steps
+
+    @staticmethod
+    def rand_subindex(batch_size, subsample_size):
+        return torch.randperm(batch_size)[0:subsample_size]
+
+    @staticmethod
+    def batches(indices, batch_size):
+        return (indices[i:i + batch_size] for i in range(0, indices.size(0), batch_size))

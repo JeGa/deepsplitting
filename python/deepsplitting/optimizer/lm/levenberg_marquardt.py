@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 from deepsplitting.optimizer.base import BaseOptimizer
-from deepsplitting.optimizer.base import Hyperparams
 
 
 class Optimizer(BaseOptimizer):
