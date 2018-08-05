@@ -106,7 +106,7 @@ class BaseOptimizer:
         self.net.zero_grad()
 
         ysize = y.numel()
-        J = torch.empty(ysize, self.numparams(), device=global_config.cfg.device)
+        J = torch.empty(ysize, self.numparams(), dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
         for i, yi in enumerate(y):  # Samples.
             for j, c in enumerate(yi):  # Classes.
@@ -165,7 +165,7 @@ class BaseOptimizer:
 
         chunk_size = int(chunk_size_factor * N)
 
-        y = torch.empty((N, self.net.output_dim), device=global_config.cfg.device)
+        y = torch.empty((N, self.net.output_dim), dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
         for i in range(0, N, chunk_size):
             with torch.set_grad_enabled(requires_grad):

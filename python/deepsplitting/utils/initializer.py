@@ -130,7 +130,7 @@ def cnn_mnist(loss_type, activation_type):
 
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleConvNet_mnist(activation, loss)
+    net = deepsplitting.networks.simple.SimpleConvNet_mnist(activation, loss).double()
 
     net.to(global_config.cfg.device)
 

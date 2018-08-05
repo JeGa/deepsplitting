@@ -38,17 +38,17 @@ def show(loader):
     imshow(torchvision.utils.make_grid(images))
 
 
-def one_hot(x, classes):
+def one_hot(x, classes, dtype=torch.double):
     """
     :param x: Torch tensor of ints of shape (N).
-    :return: Torch tensor of floats of shape (N, classes).
+    :return: Torch tensor of shape (N, classes).
     """
     if x.size():
         N = x.size(0)
     else:
         N = 1
 
-    onehot = torch.zeros(N, classes, dtype=torch.float)
+    onehot = torch.zeros(N, classes, dtype=dtype)
     onehot[list(range(N)), x] = 1
 
     return onehot

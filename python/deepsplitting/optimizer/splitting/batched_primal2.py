@@ -36,6 +36,7 @@ class Optimizer_batched(Optimizer):
         for i, index in enumerate(self.batches(indices, batch_size), 1):
             subindex = torch.randperm(batch_size)[0:subsample_size]
 
+            self.current_batch_iter = i  # For vanishing stepsize.
             self.primal2(inputs, labels, index, subindex)
             self.primal1(inputs, labels)
             self.dual(inputs)

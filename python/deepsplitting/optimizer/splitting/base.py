@@ -28,13 +28,19 @@ class Optimizer(BaseOptimizer):
         self.init_variables(Initializer.RANDN)
 
     def init_variables(self, initializer):
-        self.lam = torch.ones(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
+        self.lam = torch.ones(self.N, self.net.output_dim,
+                              dtype=global_config.cfg.datatype,
+                              device=global_config.cfg.device)
 
         if initializer is Initializer.DEBUG:
-            self.v = torch.zeros(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
+            self.v = torch.zeros(self.N, self.net.output_dim,
+                                 dtype=global_config.cfg.datatype,
+                                 device=global_config.cfg.device)
         else:
-            torch.manual_seed(123)
-            self.v = 0.1 * torch.randn(self.N, self.net.output_dim, dtype=torch.float, device=global_config.cfg.device)
+            torch.manual_seed(global_config.cfg.seed)
+            self.v = 0.1 * torch.randn(self.N, self.net.output_dim,
+                                       dtype=global_config.cfg.datatype,
+                                       device=global_config.cfg.device)
 
     def init(self, inputs, labels, initializer, parameters=None):
         super(Optimizer, self).init_parameters(initializer, parameters)
@@ -120,7 +126,7 @@ def primal1_ls(y, lam, y_train, rho, loss):
 
 
 def primal1_nll(y, lam, y_train, rho, loss):
-    z = torch.zeros(y.size(), dtype=torch.float, device=global_config.cfg.device)
+    z = torch.zeros(y.size(), dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
     r = y + lam / rho
 
