@@ -5,6 +5,7 @@ import deepsplitting.utils.global_config as global_config
 from deepsplitting.optimizer.splitting.batched_primal2 import Optimizer_batched
 
 
+# TODO: Init functions reset M.
 # TODO: Damping which loss?
 class Optimizer_damping(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
@@ -173,7 +174,7 @@ class Optimizer_vanstep(Optimizer_batched):
             if torch.norm(loss_new) <= eta * torch.norm(loss_current):  # TODO: Lagrangian?
                 self.restore_params(new_params)
             else:
-                sigma = 1 / self.current_batch_iter  # TODO
+                sigma = 1 / self.iteration
 
                 new_params = self.vec_to_params_update(sigma * step, from_numpy=False)
                 self.restore_params(new_params)

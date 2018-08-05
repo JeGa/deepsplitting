@@ -10,6 +10,13 @@ class Optimizer_batched(Optimizer):
     def __init__(self, net, N, hyperparams):
         super(Optimizer_batched, self).__init__(net, N, hyperparams)
 
+        self.iteration = 1
+
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer_batched, self).init(inputs, labels, initializer, parameters)
+
+        self.iteration = 1
+
     def step(self, inputs, labels):
         """
         This function does the batching. The given inputs and labels should be sampled in full batch and always be in
@@ -33,7 +40,6 @@ class Optimizer_batched(Optimizer):
         for i, index in enumerate(self.batches(indices, batch_size), 1):
             subindex = self.rand_subindex(batch_size, subsample_size)
 
-            self.current_batch_iter = i  # For vanishing stepsize.
             self.primal2(inputs, labels, index, subindex)
             self.primal1(inputs, labels)
             self.dual(inputs)
@@ -50,6 +56,8 @@ class Optimizer_batched(Optimizer):
                 self.hyperparams.rho = self.hyperparams.rho + self.hyperparams.rho_add
 
             lagrangian_old = lagrangian_new
+
+            self.iteration += 1
 
         return data_loss_batchstep, lagrangian_batchstep
 

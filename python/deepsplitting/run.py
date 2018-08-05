@@ -43,11 +43,14 @@ def main():
         # 'sbLM_vanstep': sbLM.Optimizer_vanstep(net, N=training_batch_size,
         #                                      hyperparams=optimizer_params['sbLM_vanstep']),
 
-        # 'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
-        #                                     hyperparams=optimizer_params['bLM_damping']),
+        'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
+                                             hyperparams=optimizer_params['bLM_damping']),
 
         'bLM_armijo': bLM.Optimizer_armijo(net, N=training_batch_size,
                                            hyperparams=optimizer_params['bLM_armijo']),
+
+        'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
+                                             hyperparams=optimizer_params['bLM_vanstep']),
 
         # 'sbGD': sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD']),
 

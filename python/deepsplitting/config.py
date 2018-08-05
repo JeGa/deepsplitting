@@ -61,7 +61,10 @@ optimizer_params_ls = {
                                M=0.001, factor=10),
 
     'bLM_armijo': Hyperparams(subsample_factor=1, cg_iter=10,
-                              delta=1, eta=0.5, beta=0.5, gamma=10e-4)
+                              delta=1, eta=0.5, beta=0.5, gamma=10e-4),
+
+    'bLM_vanstep': Hyperparams(subsample_factor=1, cg_iter=10,
+                               delta=1, eta=0.5)
 
     # 'LLC_fix': Hyperparams(M=0.001, factor=10, rho=5, rho_add=0),
     # 'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),

@@ -20,6 +20,12 @@ class Optimizer(BaseOptimizer):
             raise ValueError("Only works with least squares loss.")
 
         self.N = N
+        self.iteration = 1
+
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer, self).init_parameters(initializer, parameters)
+
+        self.iteration = 1
 
     def step(self, inputs, labels):
         batch_size = global_config.cfg.training_batch_size
@@ -42,6 +48,8 @@ class Optimizer(BaseOptimizer):
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
                 type(self).__module__, i, max_steps, current_loss))
 
+            self.iteration += 1
+
         return loss
 
     def loss_chunked(self, inputs, labels):
@@ -59,7 +67,7 @@ class Optimizer_damping(Optimizer):
         self.M = self.hyperparams.M
 
     def init(self, inputs, labels, initializer, parameters=None):
-        super(Optimizer, self).init_parameters(initializer, parameters)
+        super(Optimizer_damping, self).init(inputs, labels, initializer, parameters)
 
         self.M = self.hyperparams.M
 
@@ -97,7 +105,7 @@ class Optimizer_armijo(Optimizer):
         super(Optimizer_armijo, self).__init__(net, N, hyperparams)
 
     def init(self, inputs, labels, initializer, parameters=None):
-        super(Optimizer, self).init_parameters(initializer, parameters)
+        super(Optimizer_armijo, self).init(inputs, labels, initializer, parameters)
 
     def cg_step(self, inputs, labels, index, subindex, delta):
         J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
@@ -162,3 +170,48 @@ class Optimizer_armijo(Optimizer):
         self.restore_params(current_params)
 
         return False
+
+
+class Optimizer_vanstep(Optimizer):
+    def __init__(self, net, N, hyperparams):
+        super(Optimizer_vanstep, self).__init__(net, N, hyperparams)
+
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer_vanstep, self).init(inputs, labels, initializer, parameters)
+
+    def cg_step(self, inputs, labels, index, subindex, delta):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+
+        R = torch.reshape(labels[index] - y_batch, (-1, 1))
+        B = J1.t().matmul(R)
+
+        x = torch.zeros(J2.size(1), 1, dtype=global_config.cfg.datatype, device=global_config.cfg.device)
+
+        mu = torch.norm(R) ** delta
+
+        def A(p):
+            return J2.t().matmul(J2.matmul(p)) + mu * p
+
+        new_params, step = self.cg_solve(x, A, B, return_step=True)
+
+        # Required for armijo.
+        dderiv = B.t().matmul(step)
+
+        return new_params, step, B, dderiv
+
+    def step_batched(self, inputs, labels, index, subindex):
+        delta = self.hyperparams.delta
+        eta = self.hyperparams.eta
+
+        loss_current = self.loss_chunked(inputs, labels)
+
+        new_params, step, B, dderiv = self.cg_step(inputs, labels, index, subindex, delta)
+
+        self.load(new_params)
+        loss_new = self.loss_chunked(inputs, labels)
+
+        if not (torch.norm(loss_new) <= eta * torch.norm(loss_current)):
+            sigma = 1 / self.iteration
+
+            new_params = self.vec_to_params_update(sigma * step, from_numpy=False)
+            self.load(new_params)
