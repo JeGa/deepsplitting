@@ -35,8 +35,8 @@ def main():
         raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        # 'sbLM_damping':
-        #    sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping']),
+        'sbLM_damping':
+            sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping']),
         # 'sbLM_armijo':
         #    sbLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_armijo']),
         # 'sbLM_vanstep':
@@ -51,10 +51,10 @@ def main():
         # 'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
         #                                     hyperparams=optimizer_params['bLM_vanstep']),
 
-        #'bGD_fix':
+        # 'bGD_fix':
         #    GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix']),
-        'bGD_vanstep':
-            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']),
+        # 'bGD_vanstep':
+        #    GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']),
 
         # Other stuff.
 
@@ -114,7 +114,7 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
     deepsplitting.utils.misc.plot_summary(summary, timer, optimizer, filename='results',
                                           folder=global_config.cfg.results_folder)
 
-    # TODO save_summary(summary, timer, optimizer_params)
+    deepsplitting.utils.misc.save_summary(optimizer, summary, timer)
 
 
 if __name__ == '__main__':

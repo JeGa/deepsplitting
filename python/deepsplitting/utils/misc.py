@@ -63,12 +63,14 @@ def plot_loss_curve(losses, title=''):
 
 def plot_summary(summary, timer, optimizer, filename, folder):
     marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
+    marker_factor = 0.04
+    marker_min = 4
 
     plt.figure()
     plt.title("Loss: {}, activation: {}".format(global_cfg.cfg.loss_type, global_cfg.cfg.activation_type))
 
     N = len(next(iter(next(iter(summary.values())).values())))
-    every = max(int(0.04 * N), 4)
+    every = max(int(marker_factor * N), marker_min)
     hyperparams_y = -0.1
 
     for optimizer_key, all_losses in summary.items():
@@ -99,33 +101,32 @@ def is_splitting(opt):
     return isinstance(opt, SplittingBase.Optimizer)
 
 
-def save_csv(name, data, params, cfg):
-    folder = os.path.join(cfg.results_folder, cfg.results_subfolders['data'])
+def save_csv(name, data, params):
+    folder = os.path.join(global_cfg.cfg.results_folder, global_cfg.cfg.results_subfolders['data'])
 
     with open(os.path.join(folder, name), 'w', newline='') as f:
         writer = csv.writer(f)
 
-        writer.writerow(cfg.csv_format())
+        writer.writerow(['GLOBAL_CONFIG'] + global_cfg.cfg.csv_format())
+
         if params is not None:
-            writer.writerow(params.csv_format())
-        writer.writerow(data)
+            writer.writerow(['PARAMETERS'] + params.csv_format())
+
+        writer.writerows(data)
 
 
 def time_str(key, timer):
     return "{:.6f}".format(timer.times[key]) if key in timer.times else ''
 
 
-def save_summary(summary, timer, params, cfg):
-    for key, losses in summary.items():
-        timerstr = time_str(key, timer)
+def save_summary(optimizer, summary, timer):
+    for optimizer_key, all_losses in summary.items():
+        timerstr = time_str(optimizer_key, timer)
 
-        if key in params:
-            p = params[key]
-        else:
-            p = None
+        all_losses = [[key] + value for key, value in all_losses.items()]
 
-        save_csv("{}_{}_{}.csv".format(key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr),
-                 losses, p, cfg)
+        save_csv("{}_{}_{}.csv".format(optimizer_key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr),
+                 all_losses, optimizer[optimizer_key].hyperparams)
 
 
 def mkdir_ifnot(dir):

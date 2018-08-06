@@ -9,7 +9,7 @@ local_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
 
-    epochs=1000,
+    epochs=2,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
