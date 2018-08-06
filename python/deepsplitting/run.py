@@ -13,8 +13,9 @@ import deepsplitting.config as config_file
 import deepsplitting.utils.global_config as global_config
 
 import deepsplitting.optimizer.splitting.batched_levenberg_marquardt as sbLM
-import deepsplitting.optimizer.splitting.batched_gradient_descent as sbGD
 import deepsplitting.optimizer.lm.batched_levenberg_marquardt as bLM
+
+import deepsplitting.optimizer.splitting.batched_gradient_descent as sbGD
 import deepsplitting.optimizer.gd.gradient_descent as GD
 
 
@@ -34,30 +35,31 @@ def main():
         raise ValueError("Unsupported loss type.")
 
     optimizer = {
-        # 'sbLM_damping': sbLM.Optimizer_damping(net, N=training_batch_size,
-        #                                       hyperparams=optimizer_params['sbLM_damping']),
-
-        # 'sbLM_armijo': sbLM.Optimizer_armijo(net, N=training_batch_size,
-        #                                     hyperparams=optimizer_params['sbLM_armijo']),
-
-        # 'sbLM_vanstep': sbLM.Optimizer_vanstep(net, N=training_batch_size,
-        #                                      hyperparams=optimizer_params['sbLM_vanstep']),
-
-        'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
-                                             hyperparams=optimizer_params['bLM_damping']),
-
-        'bLM_armijo': bLM.Optimizer_armijo(net, N=training_batch_size,
-                                           hyperparams=optimizer_params['bLM_armijo']),
-
-        'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
-                                             hyperparams=optimizer_params['bLM_vanstep']),
+        # 'sbLM_damping':
+        #    sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping']),
+        # 'sbLM_armijo':
+        #    sbLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_armijo']),
+        # 'sbLM_vanstep':
+        #    sbLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_vanstep']),
 
         # 'sbGD': sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD']),
 
-        # 'LLC_fix': LLC.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['LLC_fix']),
-        # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
+        # 'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
+        #                                     hyperparams=optimizer_params['bLM_damping']),
+        # 'bLM_armijo': bLM.Optimizer_armijo(net, N=training_batch_size,
+        #                                   hyperparams=optimizer_params['bLM_armijo']),
+        # 'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
+        #                                     hyperparams=optimizer_params['bLM_vanstep']),
+
+        'bGD_fix':
+            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix']),
+        'bGD_vanstep':
+            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']),
+
+        # Other stuff.
+
         # 'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        # 'GD': GD.Optimizer(net, hyperparams=optimizer_params['GD']),
+        # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
     }
 
@@ -85,7 +87,7 @@ def train_splitting(opt, key, trainloader, net_init_parameters, summary):
 
 
 def train_lm(opt, key, trainloader, net_init_parameters, summary):
-    data_loss = trainrun.train_LM(trainloader, opt, net_init_parameters)
+    data_loss = trainrun.train_LM_GD(trainloader, opt, net_init_parameters)
 
     results = {
         'data_loss': data_loss,

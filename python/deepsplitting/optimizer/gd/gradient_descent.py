@@ -1,9 +1,17 @@
+import torch
+import logging
+import math
+
 from deepsplitting.optimizer.base import BaseOptimizer
+import deepsplitting.utils.global_config as global_config
 
 
 class Optimizer(BaseOptimizer):
     def __init__(self, net, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
+
+    def init(self, inputs, labels, initializer, parameters=None):
+        super(Optimizer, self).init_parameters(initializer, parameters)
 
     def step(self, inputs, labels):
         loss = self.net.loss(inputs, labels)
@@ -17,5 +25,57 @@ class Optimizer(BaseOptimizer):
 
         return loss.item(), self.net.loss(inputs, labels).item()
 
+
+class Optimizer_batched(BaseOptimizer):
+    """
+    This version does the batching itself. It assumes as input the full batch samples.
+    """
+
+    def __init__(self, net, hyperparams):
+        super(Optimizer_batched, self).__init__(net, hyperparams)
+
+        self.iteration = 1
+
     def init(self, inputs, labels, initializer, parameters=None):
-        super(Optimizer, self).init_parameters(initializer, parameters)
+        super(Optimizer_batched, self).init_parameters(initializer, parameters)
+
+        self.iteration = 1
+
+    def step(self, inputs, labels):
+        batch_size = global_config.cfg.training_batch_size
+
+        torch.manual_seed(global_config.cfg.seed)
+        indices = torch.randperm(inputs.size(0))
+        max_steps = int(math.ceil(len(indices) / batch_size))
+
+        loss = list()
+
+        loss.append(self.loss_chunked(inputs, labels))
+
+        for i, index in enumerate(self.batches(indices, batch_size), 1):
+            self.gd_step(inputs[index], labels[index])
+
+            current_loss = self.loss_chunked(inputs, labels)
+
+            logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
+                type(self).__module__, i, max_steps, current_loss))
+
+            self.iteration += 1
+
+        return loss
+
+    def gd_step(self, inputs, labels):
+        loss = self.net.loss(inputs, labels)
+        loss.backward()
+
+        for p in self.net.parameters():
+            if p.grad is None:
+                continue
+
+            lr = self.hyperparams.lr
+            if self.hyperparams.vanstep:
+                lr = 1 / (self.iteration + (1 / self.hyperparams.lr))
+
+            p.data.add_(-lr, p.grad.data)
+
+        return loss.item(), self.net.loss(inputs, labels).item()

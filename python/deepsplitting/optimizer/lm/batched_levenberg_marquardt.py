@@ -1,7 +1,3 @@
-# - vangrad
-# - armijo
-# - damping
-
 import torch
 import logging
 
@@ -51,10 +47,6 @@ class Optimizer(BaseOptimizer):
             self.iteration += 1
 
         return loss
-
-    def loss_chunked(self, inputs, labels):
-        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
-        return self.net.criterion(y, labels)
 
     def step_batched(self, inputs, labels, index, subindex):
         raise NotImplementedError()

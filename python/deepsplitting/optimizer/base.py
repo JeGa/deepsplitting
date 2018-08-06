@@ -174,6 +174,10 @@ class BaseOptimizer:
 
         return y
 
+    def loss_chunked(self, inputs, labels):
+        y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
+        return self.net.criterion(y, labels)
+
     def load(self, params):
         if params is not None:
             saved_params = self.save_params()
