@@ -79,7 +79,7 @@ class Optimizer_damping(Optimizer):
         x = torch.zeros(J2.size(1), 1, dtype=global_config.cfg.datatype, device=global_config.cfg.device)
 
         def A(p):
-            return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
+            return J2.t().matmul(J2.matmul(p)) + self.M * p
 
         return self.cg_solve(x, A, B)
 
@@ -93,10 +93,10 @@ class Optimizer_damping(Optimizer):
             loss_new = self.loss_chunked(inputs, labels)
 
             if loss < loss_new:
-                self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
+                self.M = self.M * self.hyperparams.factor
                 self.restore(saved_params)
             else:
-                self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                self.M = self.M / self.hyperparams.factor
                 break
 
 

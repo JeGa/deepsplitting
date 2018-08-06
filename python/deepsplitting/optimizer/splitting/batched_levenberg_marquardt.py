@@ -11,6 +11,8 @@ class Optimizer_damping(Optimizer_batched):
     def __init__(self, net, N, hyperparams):
         super(Optimizer_damping, self).__init__(net, N, hyperparams)
 
+        self.M = self.hyperparams.M
+
     def primal2(self, inputs, labels, index, subindex):
         max_iter = 1
 
@@ -26,9 +28,9 @@ class Optimizer_damping(Optimizer_batched):
 
                 # if lagrangian < lagrangian_new:
                 if primal2_loss < primal2_loss_new:
-                    self.hyperparams.M = self.hyperparams.M * self.hyperparams.factor
+                    self.M = self.M * self.hyperparams.factor
                 else:
-                    self.hyperparams.M = self.hyperparams.M / self.hyperparams.factor
+                    self.M = self.M / self.hyperparams.factor
                     self.restore_params(new_params)
                     break
 
@@ -49,7 +51,7 @@ class Optimizer_damping(Optimizer_batched):
         # Levenberg-Marquardt: (J2.T * J2 + M * I) * x - B = 0
 
         def A(p):
-            return J2.t().matmul(J2.matmul(p)) + self.hyperparams.M * p
+            return J2.t().matmul(J2.matmul(p)) + self.M * p
 
         return self.cg_solve(x, A, B)
 

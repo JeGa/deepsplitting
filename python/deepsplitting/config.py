@@ -39,7 +39,7 @@ server_cfg = global_config.GlobalParams(
 )
 
 # config_file.server_cfg or config_file.local_cfg.
-global_config.cfg = local_cfg
+global_config.cfg = server_cfg
 
 if not isinstance(global_config.cfg, global_config.GlobalParams):
     raise ValueError("Global config wrong instance.")
