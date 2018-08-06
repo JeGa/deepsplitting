@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 import logging
+from collections import namedtuple
 
 import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
@@ -34,34 +35,50 @@ def main():
     else:
         raise ValueError("Unsupported loss type.")
 
-    optimizer = {
-        'sbLM_damping':
-            sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping']),
-        # 'sbLM_armijo':
-        #    sbLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_armijo']),
-        # 'sbLM_vanstep':
-        #    sbLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_vanstep']),
+    OptimizerEntry = namedtuple('OptimizerEntry', ['on', 'key', 'optimizer'])
 
-        # 'sbGD': sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD']),
+    optimizer = [
+        OptimizerEntry(
+            False, 'sbLM_damping',
+            sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping'])),
+        OptimizerEntry(
+            False, 'sbLM_armijo',
+            sbLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_armijo'])),
+        OptimizerEntry(
+            False, 'sbLM_vanstep',
+            sbLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_vanstep'])),
 
-        # 'bLM_damping': bLM.Optimizer_damping(net, N=training_batch_size,
-        #                                     hyperparams=optimizer_params['bLM_damping']),
-        # 'bLM_armijo': bLM.Optimizer_armijo(net, N=training_batch_size,
-        #                                   hyperparams=optimizer_params['bLM_armijo']),
-        # 'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
-        #                                     hyperparams=optimizer_params['bLM_vanstep']),
+        OptimizerEntry(
+            True, 'sbGD_fix',
+            sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_fix'])),
+        OptimizerEntry(
+            True, 'sbGD_vanstep',
+            sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_vanstep'])),
 
-        # 'bGD_fix':
-        #    GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix']),
-        # 'bGD_vanstep':
-        #    GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']),
+        OptimizerEntry(
+            False, 'bLM_damping',
+            bLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['bLM_damping'])),
+        OptimizerEntry(
+            False, 'bLM_armijo',
+            bLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['bLM_armijo'])),
+        OptimizerEntry(
+            False, 'bLM_vanstep',
+            bLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['bLM_vanstep'])),
+
+        OptimizerEntry(
+            False, 'bGD_fix',
+            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix'])),
+        OptimizerEntry(
+            False, 'bGD_vanstep',
+            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']))
 
         # Other stuff.
-
         # 'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
         # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
         # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
-    }
+    ]
+
+    optimizer = {opt.key: opt.optimizer for opt in optimizer if opt.on}
 
     # trainrun.train(trainloader, )
 

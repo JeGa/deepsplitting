@@ -11,7 +11,11 @@ class Optimizer(Optimizer_batched):
 
         B, _ = self.linear_system_B(index, y_batch, J1)
 
-        return self.vec_to_params_update(self.hyperparams.rho * self.hyperparams.stepsize * B, from_numpy=False)
+        stepsize = self.hyperparams.stepsize
+        if self.hyperparams.vanstep:
+            stepsize = 1 / (self.iteration + (1 / self.hyperparams.stepsize))
+
+        return self.vec_to_params_update(self.hyperparams.rho * stepsize * B, from_numpy=False)
 
     def primal2(self, inputs, labels, index, subindex):
         new_params = self.gd_step(index, subindex, inputs)

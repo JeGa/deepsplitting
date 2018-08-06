@@ -55,8 +55,10 @@ optimizer_params_ls = {
         Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, stepsize=1e-3),
 
     # Splitting with batched GD step.
-    'sbGD':
-        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3),
+    'sbGD_fix':
+        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3, vanstep=False),
+    'sbGD_vanstep':
+        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3, vanstep=True),
 
     # Batched Levenberg-Marquardt (only works with LS loss).
     'bLM_damping':
