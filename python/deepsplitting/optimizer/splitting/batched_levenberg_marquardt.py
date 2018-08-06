@@ -176,7 +176,7 @@ class Optimizer_vanstep(Optimizer_batched):
             if torch.norm(loss_new) <= eta * torch.norm(loss_current):  # TODO: Lagrangian?
                 self.restore_params(new_params)
             else:
-                sigma = 1 / self.iteration
+                sigma = 1 / (self.iteration + (1 / self.hyperparams.stepsize))
 
                 new_params = self.vec_to_params_update(sigma * step, from_numpy=False)
                 self.restore_params(new_params)

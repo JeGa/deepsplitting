@@ -11,6 +11,7 @@ import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
 
 import deepsplitting.utils.global_config as global_cfg
+import deepsplitting.optimizer.splitting.base as SplittingBase
 
 
 def imshow(img, factor=1 / (2 + 0.5)):
@@ -66,7 +67,8 @@ def plot_summary(summary, timer, optimizer, filename, folder):
     plt.figure()
     plt.title("Loss: {}, activation: {}".format(global_cfg.cfg.loss_type, global_cfg.cfg.activation_type))
 
-    every = 4
+    N = len(next(iter(next(iter(summary.values())).values())))
+    every = max(int(0.04 * N), 4)
     hyperparams_y = -0.1
 
     for optimizer_key, all_losses in summary.items():
@@ -93,10 +95,8 @@ def cifarshow():
     show(trainloader)
 
 
-# TODO
-def is_llc(opt):
-    raise NotImplementedError
-    # return type(opt) is deepsplitting.
+def is_splitting(opt):
+    return isinstance(opt, SplittingBase.Optimizer)
 
 
 def save_csv(name, data, params, cfg):

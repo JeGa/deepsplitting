@@ -9,7 +9,7 @@ local_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
 
-    epochs=500,
+    epochs=1000,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
@@ -47,40 +47,38 @@ if not isinstance(global_config.cfg, global_config.GlobalParams):
 # stepsize for sbGD
 optimizer_params_ls = {
     # Splitting with different batched LM steps.
-
-    'sbLM_damping': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
-                                M=0.001, factor=10),
-
-    'sbLM_armijo': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
-                               delta=1, eta=0.5, beta=0.5, gamma=10e-4),
-
-    'sbLM_vanstep': Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10,
-                                delta=1, eta=0.5),
+    'sbLM_damping':
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, M=0.001, factor=10),
+    'sbLM_armijo':
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4),
+    'sbLM_vanstep':
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, stepsize=1e-3),
 
     # Splitting with batched GD step.
+    'sbGD':
+        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3),
 
-    'sbGD': Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3),
-
-    # Batched Levenberg-Marquardt.
-
-    'bLM_damping': Hyperparams(subsample_factor=1, cg_iter=10,
-                               M=0.001, factor=10),
-
-    'bLM_armijo': Hyperparams(subsample_factor=1, cg_iter=10,
-                              delta=1, eta=0.5, beta=0.5, gamma=10e-4),
-
-    'bLM_vanstep': Hyperparams(subsample_factor=1, cg_iter=10,
-                               delta=1, eta=0.5),
+    # Batched Levenberg-Marquardt (only works with LS loss).
+    'bLM_damping':
+        Hyperparams(subsample_factor=1, cg_iter=10, M=0.001, factor=10),
+    'bLM_armijo':
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4),
+    'bLM_vanstep':
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5),
 
     # Stochastic (batched) gradient descent.
-    'bGD_fix': Hyperparams(lr=0.001, vanstep=False),
-
-    'bGD_vanstep': Hyperparams(lr=0.001, vanstep=True),
+    'bGD_fix':
+        Hyperparams(lr=1e-3, vanstep=False),
+    'bGD_vanstep':
+        Hyperparams(lr=1e-3, vanstep=True),
 
     # Other stuff.
-    'GDA': Hyperparams(beta=0.5, gamma=10 ** -4),
-    'ProxDescent': Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
-    'ProxProp': Hyperparams(tau=0.005, tau_theta=5)
+    'GDA':
+        Hyperparams(beta=0.5, gamma=10 ** -4),
+    'ProxDescent':
+        Hyperparams(tau=1.5, sigma=0.5, mu_min=0.3),
+    'ProxProp':
+        Hyperparams(tau=0.005, tau_theta=5)
 }
 
 optimizer_params_nll = {

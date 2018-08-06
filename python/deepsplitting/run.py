@@ -51,8 +51,8 @@ def main():
         # 'bLM_vanstep': bLM.Optimizer_vanstep(net, N=training_batch_size,
         #                                     hyperparams=optimizer_params['bLM_vanstep']),
 
-        'bGD_fix':
-            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix']),
+        #'bGD_fix':
+        #    GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix']),
         'bGD_vanstep':
             GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']),
 
@@ -75,7 +75,6 @@ def main():
 
 
 def train_splitting(opt, key, trainloader, net_init_parameters, summary):
-    # TODO: if deepsplitting.utils.misc.is_llc(opt):
     data_loss, lagrangian = trainrun.train_splitting(trainloader, opt, net_init_parameters)
 
     results = {
@@ -102,8 +101,10 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
 
     for key, opt in optimizer.items():
         with timer(key):
-            # train_splitting(opt, key, trainloader, net_init_parameters, summary)
-            train_lm(opt, key, trainloader, net_init_parameters, summary)
+            if deepsplitting.utils.misc.is_splitting(opt):
+                train_splitting(opt, key, trainloader, net_init_parameters, summary)
+            else:
+                train_lm(opt, key, trainloader, net_init_parameters, summary)
 
         if global_config.cfg.loss_type == 'ls':
             testrun.test_ls(opt.net, trainloader, classes)
