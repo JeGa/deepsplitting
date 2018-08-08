@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import datetime
+import yaml
 
 import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
@@ -101,18 +102,29 @@ def is_splitting(opt):
     return isinstance(opt, SplittingBase.Optimizer)
 
 
-def save_csv(name, data, params):
+def save_yaml(name, time, data, params):
+    """
+    Save results in a more structured way than save_csv.
+    """
     folder = os.path.join(global_cfg.cfg.results_folder, global_cfg.cfg.results_subfolders['data'])
 
     with open(os.path.join(folder, name), 'w', newline='') as f:
-        writer = csv.writer(f)
-
-        writer.writerow(['GLOBAL_CONFIG'] + global_cfg.cfg.csv_format())
+        to_write = []
 
         if params is not None:
-            writer.writerow(['PARAMETERS'] + params.csv_format())
+            params = {'Parameters': params.__dict__}
 
-        writer.writerows(data)
+        cfgdict = {'Global_config': global_cfg.cfg.__dict__}
+        timedict = {'Time': time}
+        datadict = {'Data': data}
+
+        if params is not None:
+            to_write.append(params)
+        to_write.append(cfgdict)
+        to_write.append(timedict)
+        to_write.append(datadict)
+
+        yaml.dump(to_write, f, default_flow_style=False)
 
 
 def time_str(key, timer):
@@ -123,10 +135,9 @@ def save_summary(optimizer, summary, timer):
     for optimizer_key, all_losses in summary.items():
         timerstr = time_str(optimizer_key, timer)
 
-        all_losses = [[key] + value for key, value in all_losses.items()]
+        filename = "{}_{}.yml".format(optimizer_key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'))
 
-        save_csv("{}_{}_{}.csv".format(optimizer_key, datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S'), timerstr),
-                 all_losses, optimizer[optimizer_key].hyperparams)
+        save_yaml(filename, timerstr, all_losses, optimizer[optimizer_key].hyperparams)
 
 
 def mkdir_ifnot(dir):

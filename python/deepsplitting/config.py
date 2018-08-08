@@ -1,4 +1,5 @@
 import torch
+import yaml
 
 import deepsplitting.utils.global_config as global_config
 
@@ -9,7 +10,7 @@ local_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
 
-    epochs=2,
+    epochs=1,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
@@ -26,9 +27,9 @@ server_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
 
-    epochs=15,
+    epochs=30,
     training_batch_size=50,
-    training_samples=1000,  # Take subset of training set.
+    training_samples=-1,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
 
     datatype=torch.double,
@@ -41,10 +42,32 @@ server_cfg = global_config.GlobalParams(
 # config_file.server_cfg or config_file.local_cfg.
 global_config.cfg = local_cfg
 
+
+# Required if config has objects that can not be serialized using yaml.
+def torch_double_representer(dumper, data):
+    return dumper.represent_scalar('!torch.float64', str(data))
+
+
+yaml.add_representer(torch.float64, torch_double_representer)
+
+
+def torch_device_representer(dumper, data):
+    return dumper.represent_scalar('!torch.device', str(data))
+
+
+yaml.add_representer(torch.device, torch_device_representer)
+
+
+# Required if config has objects that can not be serialized using yaml.
+def torch_double_representer(dumper, data):
+    return dumper.represent_scalar('!torch.double', str(data))
+
+
+yaml.add_representer(torch.dtype, torch_double_representer)
+
 if not isinstance(global_config.cfg, global_config.GlobalParams):
     raise ValueError("Global config wrong instance.")
 
-# stepsize for sbGD
 optimizer_params_ls = {
     # Splitting with different batched LM steps.
     'sbLM_damping':
@@ -74,7 +97,7 @@ optimizer_params_ls = {
     'bGD_vanstep':
         Hyperparams(lr=1e-3, vanstep=True),
 
-    # Other stuff.
+    # Other stuff not used currently.
     'GDA':
         Hyperparams(beta=0.5, gamma=10 ** -4),
     'ProxDescent':

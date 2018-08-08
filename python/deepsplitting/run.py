@@ -39,7 +39,7 @@ def main():
 
     optimizer = [
         OptimizerEntry(
-            False, 'sbLM_damping',
+            True, 'sbLM_damping',
             sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping'])),
         OptimizerEntry(
             False, 'sbLM_armijo',
@@ -49,10 +49,10 @@ def main():
             sbLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_vanstep'])),
 
         OptimizerEntry(
-            True, 'sbGD_fix',
+            False, 'sbGD_fix',
             sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_fix'])),
         OptimizerEntry(
-            True, 'sbGD_vanstep',
+            False, 'sbGD_vanstep',
             sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_vanstep'])),
 
         OptimizerEntry(
