@@ -1,5 +1,6 @@
 import torch
 import yaml
+import logging
 
 import deepsplitting.utils.global_config as global_config
 
@@ -10,7 +11,7 @@ local_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
 
-    epochs=1,
+    epochs=5,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
@@ -18,6 +19,7 @@ local_cfg = global_config.GlobalParams(
     datatype=torch.double,
     seed=123,
 
+    logging=-1,  # To enable: logging.INFO
     results_folder='results',
     results_subfolders={'data': 'data'}
 )
@@ -27,20 +29,21 @@ server_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
 
-    epochs=30,
+    epochs=15,
     training_batch_size=50,
-    training_samples=-1,  # Take subset of training set.
+    training_samples=1000,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
 
     datatype=torch.double,
     seed=123,
 
+    logging=-1,  # To enable: logging.INFO
     results_folder='results',
     results_subfolders={'data': 'data'}
 )
 
 # config_file.server_cfg or config_file.local_cfg.
-global_config.cfg = local_cfg
+global_config.cfg = server_cfg
 
 
 # Required if config has objects that can not be serialized using yaml.
@@ -71,7 +74,7 @@ if not isinstance(global_config.cfg, global_config.GlobalParams):
 optimizer_params_ls = {
     # Splitting with different batched LM steps.
     'sbLM_damping':
-        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, M=0.001, factor=10),
+        Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=15, M=0.001, factor=10),
     'sbLM_armijo':
         Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4),
     'sbLM_vanstep':

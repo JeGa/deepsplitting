@@ -1,6 +1,7 @@
 import logging
 
 import deepsplitting.utils.global_config as global_config
+import deepsplitting.utils.global_progressbar as pb
 
 from deepsplitting.optimizer.base import Initializer
 
@@ -24,6 +25,8 @@ def train_splitting(trainloader, optimizer, params=None):
     inputs, labels = iter(trainloader).next()
     inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
 
+    pb.init(global_config.cfg.epochs, global_config.cfg.training_batch_size, inputs.size(0))
+
     optimizer.init(inputs, labels, Initializer.FROM_PARAMS, params)
 
     for epoch in range(global_config.cfg.epochs):
@@ -36,6 +39,8 @@ def train_splitting(trainloader, optimizer, params=None):
 
         if epoch % log_iter == log_iter - 1:
             logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
+
+    pb.bar.finish()
 
     return data_loss, lagrangian
 

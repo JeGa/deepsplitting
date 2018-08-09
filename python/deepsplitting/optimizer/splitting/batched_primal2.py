@@ -2,6 +2,7 @@ import torch
 import logging
 
 import deepsplitting.utils.global_config as global_config
+import deepsplitting.utils.global_progressbar as gp
 
 from deepsplitting.optimizer.splitting.base import Optimizer
 
@@ -58,6 +59,8 @@ class Optimizer_batched(Optimizer):
             lagrangian_old = lagrangian_new
 
             self.iteration += 1
+
+            gp.bar.next_batch(data_loss_new, lagrangian_new)
 
         return data_loss_batchstep, lagrangian_batchstep
 

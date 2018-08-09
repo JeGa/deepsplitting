@@ -5,6 +5,10 @@ matplotlib.use('Agg')
 import logging
 from collections import namedtuple
 
+import progressbar
+
+progressbar.streams.wrap_stderr()
+
 import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
 import deepsplitting.utils.testrun as testrun
@@ -21,7 +25,8 @@ import deepsplitting.optimizer.gd.gradient_descent as GD
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    if global_config.cfg.logging != -1:
+        logging.basicConfig(level=global_config.cfg.logging)
 
     deepsplitting.utils.misc.make_results_folder(global_config.cfg)
 

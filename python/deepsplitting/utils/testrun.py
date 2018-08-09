@@ -22,7 +22,7 @@ def run(net, testloader, eval_results):
         correct += batch.sum().item()
         samples += len(batch)
 
-    logging.info("{} of {} correctly classified.".format(correct, samples))
+    print("{} of {} correctly classified.".format(correct, samples))
 
 
 def test_nll(net, testloader):
