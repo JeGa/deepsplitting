@@ -135,9 +135,6 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
         elif global_config.cfg.loss_type == 'nll':
             testrun.test_nll(opt.net, trainloader)
 
-    deepsplitting.utils.evaluate.plot_summary(summary, timer, optimizer, filename='results',
-                                              folder=global_config.cfg.results_folder)
-
     deepsplitting.utils.evaluate.save_summary(optimizer, summary, timer)
 
 
