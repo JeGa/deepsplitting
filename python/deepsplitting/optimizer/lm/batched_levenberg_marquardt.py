@@ -2,6 +2,7 @@ import torch
 import logging
 
 import deepsplitting.utils.global_config as global_config
+import deepsplitting.utils.global_progressbar as gp
 from deepsplitting.optimizer.base import BaseOptimizer
 
 
@@ -46,6 +47,8 @@ class Optimizer(BaseOptimizer):
 
             self.iteration += 1
 
+            gp.bar.next_batch(dict(dataloss=current_loss))
+
         return loss
 
     def step_batched(self, inputs, labels, index, subindex):
@@ -75,10 +78,26 @@ class Optimizer_damping(Optimizer):
 
         return self.cg_solve(x, A, B)
 
+    def inv_step(self, index, subindex, inputs, labels):
+        J1, J2, y_batch, _ = self.subsampled_jacobians(index, subindex, inputs)
+
+        A = J2.t().matmul(J2) + self.M * torch.eye(J2.size(1),
+                                                   dtype=global_config.cfg.datatype,
+                                                   device=global_config.cfg.device)
+
+        B = J1.t().matmul(torch.reshape(labels[index] - y_batch, (-1, 1)))
+
+        x = torch.inverse(A).matmul(B)
+
+        return self.vec_to_params_update(x, from_numpy=False)
+
     def step_batched(self, inputs, labels, index, subindex):
         loss = self.loss_chunked(inputs, labels)
 
         while True:
+            logging.info('M = {}'.format(self.M))
+
+            # new_params = self.inv_step(index, subindex, inputs, labels)
             new_params = self.cg_step(index, subindex, inputs, labels)
 
             saved_params = self.load(new_params)

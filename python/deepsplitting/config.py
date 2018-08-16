@@ -11,7 +11,7 @@ local_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
 
-    epochs=5,
+    epochs=1,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
@@ -29,21 +29,21 @@ server_cfg = global_config.GlobalParams(
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
 
-    epochs=15,
-    training_batch_size=50,
+    epochs=20,
+    training_batch_size=1000,
     training_samples=1000,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
 
     datatype=torch.double,
     seed=123,
 
-    logging=-1,  # To enable: logging.INFO
+    logging=logging.INFO,  # To enable: logging.INFO, to disable set to -1.
     results_folder='results',
     results_subfolders={'data': 'data'}
 )
 
 # config_file.server_cfg or config_file.local_cfg.
-global_config.cfg = server_cfg
+global_config.cfg = local_cfg
 
 
 # Required if config has objects that can not be serialized using yaml.
@@ -74,11 +74,11 @@ if not isinstance(global_config.cfg, global_config.GlobalParams):
 optimizer_params_ls = {
     # Splitting with different batched LM steps.
     'sbLM_damping':
-        Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=15, M=0.001, factor=10),
+        Hyperparams(rho=10, rho_add=0, subsample_factor=1, cg_iter=15, M=0.001, factor=10),
     'sbLM_armijo':
         Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4),
     'sbLM_vanstep':
-        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, stepsize=1e-3),
+        Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=15, delta=1, eta=0.5, stepsize=1e-3),
 
     # Splitting with batched GD step.
     'sbGD_fix':
@@ -88,7 +88,7 @@ optimizer_params_ls = {
 
     # Batched Levenberg-Marquardt (only works with LS loss).
     'bLM_damping':
-        Hyperparams(subsample_factor=1, cg_iter=10, M=0.001, factor=10),
+        Hyperparams(subsample_factor=1, cg_iter=20, M=0.001, factor=5),
     'bLM_armijo':
         Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4),
     'bLM_vanstep':

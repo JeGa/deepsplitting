@@ -60,7 +60,7 @@ class Optimizer_batched(Optimizer):
 
             self.iteration += 1
 
-            gp.bar.next_batch(data_loss_new, lagrangian_new)
+            gp.bar.next_batch(dict(dataloss=data_loss_new, lagrangian=lagrangian_new))
 
         return data_loss_batchstep, lagrangian_batchstep
 

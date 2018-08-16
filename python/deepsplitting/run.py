@@ -1,5 +1,7 @@
 import matplotlib
 
+import deepsplitting.utils.evaluate
+
 matplotlib.use('Agg')
 
 import logging
@@ -28,7 +30,7 @@ def main():
     if global_config.cfg.logging != -1:
         logging.basicConfig(level=global_config.cfg.logging)
 
-    deepsplitting.utils.misc.make_results_folder(global_config.cfg)
+    deepsplitting.utils.evaluate.make_results_folder(global_config.cfg)
 
     net, trainloader, training_batch_size, classes = initializer.cnn_mnist(global_config.cfg.loss_type,
                                                                            global_config.cfg.activation_type)
@@ -44,7 +46,7 @@ def main():
 
     optimizer = [
         OptimizerEntry(
-            True, 'sbLM_damping',
+            False, 'sbLM_damping',
             sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping'])),
         OptimizerEntry(
             False, 'sbLM_armijo',
@@ -61,7 +63,7 @@ def main():
             sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_vanstep'])),
 
         OptimizerEntry(
-            False, 'bLM_damping',
+            True, 'bLM_damping',
             bLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['bLM_damping'])),
         OptimizerEntry(
             False, 'bLM_armijo',
@@ -133,10 +135,10 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
         elif global_config.cfg.loss_type == 'nll':
             testrun.test_nll(opt.net, trainloader)
 
-    deepsplitting.utils.misc.plot_summary(summary, timer, optimizer, filename='results',
-                                          folder=global_config.cfg.results_folder)
+    deepsplitting.utils.evaluate.plot_summary(summary, timer, optimizer, filename='results',
+                                              folder=global_config.cfg.results_folder)
 
-    deepsplitting.utils.misc.save_summary(optimizer, summary, timer)
+    deepsplitting.utils.evaluate.save_summary(optimizer, summary, timer)
 
 
 if __name__ == '__main__':
