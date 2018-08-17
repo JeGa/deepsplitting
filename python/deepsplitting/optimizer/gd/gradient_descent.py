@@ -4,6 +4,7 @@ import math
 
 from deepsplitting.optimizer.base import BaseOptimizer
 import deepsplitting.utils.global_config as global_config
+import deepsplitting.utils.testrun as testrun
 
 
 class Optimizer(BaseOptimizer):
@@ -48,7 +49,8 @@ class Optimizer_batched(BaseOptimizer):
         indices = torch.randperm(inputs.size(0))
         max_steps = int(math.ceil(len(indices) / batch_size))
 
-        loss = list()
+        loss = []
+        correctly_classified = []
 
         loss.append(self.loss_chunked(inputs, labels))
 
@@ -60,9 +62,14 @@ class Optimizer_batched(BaseOptimizer):
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
                 type(self).__module__, i, max_steps, current_loss))
 
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
+                                               global_config.cfg.classes)
+            if correct is not None:
+                correctly_classified.append(correct)
+
             self.iteration += 1
 
-        return loss
+        return loss, correct
 
     def gd_step(self, inputs, labels):
         loss = self.net.loss(inputs, labels)

@@ -43,22 +43,28 @@ def main():
 
 
 def train_splitting(opt, key, trainloader, net_init_parameters, summary):
-    data_loss, lagrangian = trainrun.train_splitting(trainloader, opt, net_init_parameters)
+    data_loss, lagrangian, correct = trainrun.train_splitting(trainloader, opt, net_init_parameters)
 
     results = {
         'data_loss': data_loss,
         'lagrangian': lagrangian
     }
 
+    if len(correct) != 0:
+        results['correct'] = correct
+
     summary[key] = results
 
 
 def train_lm(opt, key, trainloader, net_init_parameters, summary):
-    data_loss = trainrun.train_LM_GD(trainloader, opt, net_init_parameters)
+    data_loss, correct = trainrun.train_LM_GD(trainloader, opt, net_init_parameters)
 
     results = {
-        'data_loss': data_loss,
+        'data_loss': data_loss
     }
+
+    if len(correct) != 0:
+        results['correct'] = correct
 
     summary[key] = results
 

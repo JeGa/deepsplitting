@@ -16,8 +16,9 @@ def total_loss(net, loader):
 
 
 def train_splitting(trainloader, optimizer, params=None):
-    data_loss = list()
-    lagrangian = list()
+    data_loss = []
+    lagrangian = []
+    correctly_classified = []
 
     log_iter = 1
 
@@ -33,21 +34,23 @@ def train_splitting(trainloader, optimizer, params=None):
     for epoch in range(global_config.cfg.epochs):
         optimizer.zero_grad()
 
-        data_loss_batchstep, lagrangian_batchstep = optimizer.step(inputs, labels)
+        data_loss_batchstep, lagrangian_batchstep, correct = optimizer.step(inputs, labels)
 
         data_loss += data_loss_batchstep
         lagrangian += lagrangian_batchstep
+        correctly_classified += correct
 
         if epoch % log_iter == log_iter - 1:
             logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
 
     pb.bar.finish()
 
-    return data_loss, lagrangian
+    return data_loss, lagrangian, correctly_classified
 
 
 def train_LM_GD(trainloader, optimizer, params=None):
-    data_loss = list()
+    data_loss = []
+    correctly_classified = []
 
     log_iter = 1
 
@@ -63,13 +66,14 @@ def train_LM_GD(trainloader, optimizer, params=None):
     for epoch in range(global_config.cfg.epochs):
         optimizer.zero_grad()
 
-        data_loss_batchstep = optimizer.step(inputs, labels)
+        data_loss_batchstep, correct = optimizer.step(inputs, labels)
 
         data_loss += data_loss_batchstep
+        correctly_classified += correct
 
         if epoch % log_iter == log_iter - 1:
             logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
 
     pb.bar.finish()
 
-    return data_loss
+    return data_loss, correctly_classified

@@ -3,6 +3,7 @@ import logging
 
 import deepsplitting.utils.global_config as global_config
 import deepsplitting.utils.global_progressbar as gp
+import deepsplitting.utils.testrun as testrun
 from deepsplitting.optimizer.base import BaseOptimizer
 
 
@@ -30,7 +31,8 @@ class Optimizer(BaseOptimizer):
                                                                           self.hyperparams.subsample_factor,
                                                                           self.N)
 
-        loss = list()
+        loss = []
+        correctly_classified = []
 
         loss.append(self.loss_chunked(inputs, labels))
 
@@ -45,11 +47,16 @@ class Optimizer(BaseOptimizer):
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
                 type(self).__module__, i, max_steps, current_loss))
 
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
+                                               global_config.cfg.classes)
+            if correct is not None:
+                correctly_classified.append(correct)
+
             self.iteration += 1
 
             gp.bar.next_batch(dict(dataloss=current_loss))
 
-        return loss
+        return loss, correctly_classified
 
     def step_batched(self, inputs, labels, index, subindex):
         raise NotImplementedError()

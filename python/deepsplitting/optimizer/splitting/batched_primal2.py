@@ -3,6 +3,7 @@ import logging
 
 import deepsplitting.utils.global_config as global_config
 import deepsplitting.utils.global_progressbar as gp
+import deepsplitting.utils.testrun as testrun
 
 from deepsplitting.optimizer.splitting.base import Optimizer
 
@@ -28,8 +29,9 @@ class Optimizer_batched(Optimizer):
                                                                           self.hyperparams.subsample_factor,
                                                                           self.N)
 
-        data_loss_batchstep = list()
-        lagrangian_batchstep = list()
+        data_loss_batchstep = []
+        lagrangian_batchstep = []
+        correctly_classified = []
 
         data_loss_startepoch, lagrangian_startepoch = self.eval(inputs, labels)
 
@@ -58,11 +60,16 @@ class Optimizer_batched(Optimizer):
 
             lagrangian_old = lagrangian_new
 
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
+                                               global_config.cfg.classes)
+            if correct is not None:
+                correctly_classified.append(correct)
+
             self.iteration += 1
 
             gp.bar.next_batch(dict(dataloss=data_loss_new, lagrangian=lagrangian_new))
 
-        return data_loss_batchstep, lagrangian_batchstep
+        return data_loss_batchstep, lagrangian_batchstep, correctly_classified
 
     def primal2(self, inputs, labels, index, subindex):
         raise NotImplementedError()

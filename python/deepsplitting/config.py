@@ -14,11 +14,13 @@ local_cfg = global_config.GlobalParams(
     loss_type='ls',  # 'ls' or 'nll'.
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cpu'),
+    classes=10,
 
     epochs=5,
     training_batch_size=10,
     training_samples=50,  # Take subset of training set.
     forward_chunk_size_factor=1,
+    test_interval=5,  # -1 to disable.
 
     datatype=torch.double,
     seed=123,
@@ -32,11 +34,13 @@ server_cfg = global_config.GlobalParams(
     loss_type='ls',  # 'ls' or 'nll'.
     activation_type='relu',  # 'relu' or 'sigmoid'.
     device=torch.device('cuda'),
+    classes=10,
 
     epochs=20,
-    training_batch_size=100,
+    training_batch_size=50,
     training_samples=1000,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
+    test_interval=-1,  # -1 to disable.
 
     datatype=torch.double,
     seed=123,
@@ -47,7 +51,7 @@ server_cfg = global_config.GlobalParams(
 )
 
 # config_file.server_cfg or config_file.local_cfg.
-global_config.cfg = local_cfg
+global_config.cfg = server_cfg
 
 
 def yaml_custom_types():
@@ -112,10 +116,10 @@ optimizer_params_ls = [
         Hyperparams(subsample_factor=1, cg_iter=8, M=0.001, factor=5)),
     ParamsEntry(
         True, 'bLM_armijo', bLM.Optimizer_armijo,
-        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
+        Hyperparams(subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
     ParamsEntry(
         False, 'bLM_vanstep', bLM.Optimizer_vanstep,
-        Hyperparams(subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, stepsize=1e-3, stepsize_fix=True)),
+        Hyperparams(subsample_factor=0.5, cg_iter=20, delta=1, eta=0.5, stepsize=1e-3, stepsize_fix=True)),
 
     # Stochastic (batched) gradient descent.
     ParamsEntry(

@@ -46,17 +46,27 @@ def test_ls(net, testloader, classes):
     return run(net, testloader, lambda outputs, labels: evaluate_ls(outputs, labels, classes))
 
 
-def test_at_interval(iteration, inputs, labels):
+def test_at_interval(net, iteration, inputs, labels, classes):
     if global_config.cfg.loss_type == 'ls':
-        eval = evaluate_ls
+        eval = lambda outputs, labels: evaluate_ls(outputs, labels, classes)
     elif global_config.cfg.loss_type == 'nll':
-        eval = evaluate_nll
+        eval = evaluate_ls
     else:
         raise ValueError("Unsupported loss type.")
 
     interval = global_config.cfg.test_interval
 
-    pass
+    if interval == -1:
+        return None
+
+    if iteration % interval != 0:
+        return None
+
+    outputs = net(inputs).detach()
+
+    correct = eval(outputs, labels).sum().item()
+
+    return correct
 
 
 def run_fullbatch_loaded(net, inputs, labels, eval_results):
