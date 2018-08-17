@@ -30,8 +30,8 @@ server_cfg = global_config.GlobalParams(
     device=torch.device('cuda'),
 
     epochs=20,
-    training_batch_size=50,
-    training_samples=1000,  # Take subset of training set.
+    training_batch_size=20,
+    training_samples=100,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
 
     datatype=torch.double,
@@ -43,7 +43,7 @@ server_cfg = global_config.GlobalParams(
 )
 
 # config_file.server_cfg or config_file.local_cfg.
-global_config.cfg = local_cfg
+global_config.cfg = server_cfg
 
 
 def yaml_custom_types():

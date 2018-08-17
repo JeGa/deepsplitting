@@ -45,6 +45,7 @@ def plot_yaml(files):
     every = max(int(marker_factor * N), marker_min)
 
     plt.figure(1)
+    plt.clf()
 
     keys = []
 
@@ -79,9 +80,6 @@ def plot_yaml(files):
         all_optimizer_keys_str + datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S') + '.pdf')
 
     plt.savefig(plot_filename, bbox_inches='tight')
-
-    # IPython.display.clear_output(wait=True)
-    # IPython.display.display(plt.gcf())
     plt.show()
 
 
