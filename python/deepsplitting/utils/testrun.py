@@ -1,7 +1,20 @@
 import torch
-import logging
 import deepsplitting.utils.misc
 import deepsplitting.utils.global_config as global_config
+
+
+def evaluate_nll(outputs, labels):
+    sm = torch.nn.Softmax(1)
+    _, predicted = torch.max(sm(outputs.data), 1)
+
+    return labels == predicted
+
+
+def evaluate_ls(outputs, labels, classes):
+    _, predicted = torch.max(outputs.data, 1)
+
+    predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, classes).to(global_config.cfg.device)
+    return torch.sum(labels == predicted_one_hot, 1) == labels.size(1)
 
 
 def run(net, testloader, eval_results):
@@ -22,24 +35,38 @@ def run(net, testloader, eval_results):
         correct += batch.sum().item()
         samples += len(batch)
 
-    print("{} of {} correctly classified.".format(correct, samples))
+    return correct, samples
 
 
 def test_nll(net, testloader):
-    def evaluate(outputs, labels):
-        sm = torch.nn.Softmax(1)
-        _, predicted = torch.max(sm(outputs.data), 1)
-
-        return labels == predicted
-
-    run(net, testloader, evaluate)
+    return run(net, testloader, evaluate_nll)
 
 
 def test_ls(net, testloader, classes):
-    def evaluate(outputs, labels):
-        _, predicted = torch.max(outputs.data, 1)
+    return run(net, testloader, lambda outputs, labels: evaluate_ls(outputs, labels, classes))
 
-        predicted_one_hot = deepsplitting.utils.misc.one_hot(predicted, classes).to(global_config.cfg.device)
-        return torch.sum(labels == predicted_one_hot, 1) == labels.size(1)
 
-    run(net, testloader, evaluate)
+def test_at_interval(iteration, inputs, labels):
+    if global_config.cfg.loss_type == 'ls':
+        eval = evaluate_ls
+    elif global_config.cfg.loss_type == 'nll':
+        eval = evaluate_nll
+    else:
+        raise ValueError("Unsupported loss type.")
+
+    interval = global_config.cfg.test_interval
+
+    pass
+
+
+def run_fullbatch_loaded(net, inputs, labels, eval_results):
+    results = []
+
+    outputs = net(inputs)
+
+    results.append(eval_results(outputs, labels))
+
+    samples = inputs.size(0)
+    # correct =
+
+    # return correct, samples

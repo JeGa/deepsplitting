@@ -152,7 +152,7 @@ class Optimizer_armijo(Optimizer):
         current_params = self.load(new_params)
         loss_new = self.loss_chunked(inputs, labels)
 
-        if not (torch.norm(loss_new) <= eta * torch.norm(loss_current)):
+        if not (abs(loss_new) <= eta * abs(loss_current)):
             self.load(current_params)
             self.armijo(inputs, labels, step, beta, gamma, loss_current, dderiv)
 
@@ -221,8 +221,11 @@ class Optimizer_vanstep(Optimizer):
         self.load(new_params)
         loss_new = self.loss_chunked(inputs, labels)
 
-        if not (torch.norm(loss_new) <= eta * torch.norm(loss_current)):
-            sigma = 1 / self.iteration
+        if not (abs(loss_new) <= eta * abs(loss_current)):
+            if self.hyperparams.stepsize_fix:
+                sigma = self.hyperparams.stepsize
+            else:
+                sigma = 1.0 / (self.iteration + (1.0 / self.hyperparams.stepsize))
 
             new_params = self.vec_to_params_update(sigma * step, from_numpy=False)
             self.load(new_params)

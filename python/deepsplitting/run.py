@@ -1,16 +1,13 @@
 import matplotlib
 
-import deepsplitting.utils.evaluate
-
 matplotlib.use('Agg')
 
 import logging
-from collections import namedtuple
-
 import progressbar
 
 progressbar.streams.wrap_stderr()
 
+import deepsplitting.utils.evaluate
 import deepsplitting.utils.initializer as initializer
 import deepsplitting.utils.trainrun as trainrun
 import deepsplitting.utils.testrun as testrun
@@ -18,12 +15,6 @@ import deepsplitting.utils.timing as timing
 import deepsplitting.utils.misc
 import deepsplitting.config as config_file
 import deepsplitting.utils.global_config as global_config
-
-import deepsplitting.optimizer.splitting.batched_levenberg_marquardt as sbLM
-import deepsplitting.optimizer.lm.batched_levenberg_marquardt as bLM
-
-import deepsplitting.optimizer.splitting.batched_gradient_descent as sbGD
-import deepsplitting.optimizer.gd.gradient_descent as GD
 
 
 def main():
@@ -42,55 +33,8 @@ def main():
     else:
         raise ValueError("Unsupported loss type.")
 
-    OptimizerEntry = namedtuple('OptimizerEntry', ['on', 'key', 'optimizer'])
-
-    optimizer = [
-        OptimizerEntry(
-            False, 'sbLM_damping',
-            sbLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_damping'])),
-        OptimizerEntry(
-            False, 'sbLM_armijo',
-            sbLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_armijo'])),
-        OptimizerEntry(
-            False, 'sbLM_vanstep',
-            sbLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['sbLM_vanstep'])),
-
-        OptimizerEntry(
-            False, 'sbGD_fix',
-            sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_fix'])),
-        OptimizerEntry(
-            False, 'sbGD_vanstep',
-            sbGD.Optimizer(net, N=training_batch_size, hyperparams=optimizer_params['sbGD_vanstep'])),
-
-        OptimizerEntry(
-            True, 'bLM_damping',
-            bLM.Optimizer_damping(net, N=training_batch_size, hyperparams=optimizer_params['bLM_damping'])),
-        OptimizerEntry(
-            False, 'bLM_armijo',
-            bLM.Optimizer_armijo(net, N=training_batch_size, hyperparams=optimizer_params['bLM_armijo'])),
-        OptimizerEntry(
-            False, 'bLM_vanstep',
-            bLM.Optimizer_vanstep(net, N=training_batch_size, hyperparams=optimizer_params['bLM_vanstep'])),
-
-        OptimizerEntry(
-            False, 'bGD_fix',
-            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_fix'])),
-        OptimizerEntry(
-            False, 'bGD_vanstep',
-            GD.Optimizer_batched(net, hyperparams=optimizer_params['bGD_vanstep']))
-
-        # Other stuff.
-        # 'GDA': GDA.Optimizer(net, hyperparams=optimizer_params['GDA']),
-        # 'ProxDescent': ProxDescent.Optimizer(net, hyperparams=optimizer_params['ProxDescent']),
-        # 'ProxProp': ProxProp.Optimizer(net, hyperparams=optimizer_params['ProxProp'])
-    ]
-
-    optimizer = {opt.key: opt.optimizer for opt in optimizer if opt.on}
-
-    # trainrun.train(trainloader, )
-
-    # if params.loss_type == 'ls':
-    #    optimizer['LM'] = LM.Optimizer(net, hyperparams=optimizer_params['LM'])
+    optimizer = {params.key: params.create(net, N=training_batch_size, hyperparams=params.params) for params in
+                 optimizer_params if params.on}
 
     # To have the same network parameter initialization for all nets.
     net_init_parameters = next(iter(optimizer.values())).save_params()
@@ -131,9 +75,13 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
                 train_lm(opt, key, trainloader, net_init_parameters, summary)
 
         if global_config.cfg.loss_type == 'ls':
-            testrun.test_ls(opt.net, trainloader, classes)
+            correct, samples = testrun.test_ls(opt.net, trainloader, classes)
         elif global_config.cfg.loss_type == 'nll':
-            testrun.test_nll(opt.net, trainloader)
+            correct, samples = testrun.test_nll(opt.net, trainloader)
+        else:
+            raise ValueError()
+
+        print("{} of {} correctly classified.".format(correct, samples))
 
     deepsplitting.utils.evaluate.save_summary(optimizer, summary, timer)
 

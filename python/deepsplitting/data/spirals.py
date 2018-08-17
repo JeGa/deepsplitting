@@ -6,7 +6,7 @@ from deepsplitting.data.misc import get_sampler
 
 
 class BinarySpirals(torch.utils.data.Dataset):
-    def __init__(self, folder='data/binary_spirals/', transform=None, target_transform=None):
+    def __init__(self, folder='datasets/binary_spirals/', transform=None, target_transform=None):
         self.files = {'X_train': folder + 'binary_spirals_X_train',
                       'y_train': folder + 'binary_spirals_y_train'}
 

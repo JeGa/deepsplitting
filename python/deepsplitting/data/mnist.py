@@ -5,7 +5,7 @@ from deepsplitting.data.misc import get_sampler
 from deepsplitting.data.misc import To64fTensor
 
 
-def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='data', target_transform=None):
+def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='datasets', target_transform=None):
     def flatten(img):
         return torch.reshape(img, (-1,))
 
@@ -18,7 +18,7 @@ def load_MNIST_vectorized(training_samples=-1, test_samples=-1, folder='data', t
     return mnist_loader(training_samples, test_samples, folder, transform, target_transform)
 
 
-def load_MNIST(training_samples=-1, test_samples=-1, folder='data', target_transform=None,
+def load_MNIST(training_samples=-1, test_samples=-1, folder='datasets', target_transform=None,
                normalize_transform=torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                fullbatch=True, training_batch_size=None, test_batch_size=None):
     transform = torchvision.transforms.Compose([To64fTensor(),

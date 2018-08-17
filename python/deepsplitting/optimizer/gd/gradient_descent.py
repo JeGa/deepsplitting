@@ -7,7 +7,7 @@ import deepsplitting.utils.global_config as global_config
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams):
+    def __init__(self, net, N, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
 
     def init(self, inputs, labels, initializer, parameters=None):

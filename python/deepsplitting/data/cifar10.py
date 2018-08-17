@@ -7,7 +7,7 @@ from .misc import To64fTensor
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
                  normalize_transform=torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                 folder='data', target_transform=None):
+                 folder='datasets', target_transform=None):
     """
     Load CIFAR10 data set. Data is always sampled in the same order and full batch.
     Default normalization is to the range [-1, 1].
@@ -41,7 +41,7 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
 
 def load_CIFAR10_batched(training_batch_size, test_batch_size,
                          normalize_transform=torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                         folder='data', target_transform=None):
+                         folder='datasets', target_transform=None):
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                 normalize_transform])
 
