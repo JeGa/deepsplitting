@@ -81,7 +81,7 @@ class Optimizer_batched(BaseOptimizer):
 
             lr = self.hyperparams.lr
             if self.hyperparams.vanstep:
-                lr = 1 / (self.iteration + (1 / self.hyperparams.lr))
+                lr = (1 / (self.iteration + (1 / self.hyperparams.lr))) + self.hyperparams.min_stepsize
 
             p.data.add_(-lr, p.grad.data)
 

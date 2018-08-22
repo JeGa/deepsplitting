@@ -96,7 +96,7 @@ optimizer_params_ls = [
         Hyperparams(rho=10, rho_add=0, subsample_factor=1, cg_iter=15, M=0.001, factor=10)),
     ParamsEntry(
         False, 'sbLM_armijo', sbLM.Optimizer_armijo,
-        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=20, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
     ParamsEntry(
         False, 'sbLM_vanstep', sbLM.Optimizer_vanstep,
         Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=15, delta=1, eta=0.5, stepsize=1e-3,
@@ -107,19 +107,19 @@ optimizer_params_ls = [
         False, 'sbGD_fix', sbGD.Optimizer,
         Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3, vanstep=False)),
     ParamsEntry(
-        False, 'sbGD_vanstep', sbGD.Optimizer,
-        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3, vanstep=True)),
+        True, 'sbGD_vanstep', sbGD.Optimizer,
+        Hyperparams(rho=1, rho_add=0, subsample_factor=1.0, stepsize=1e-3, min_stepsize=1e-5, vanstep=True)),
 
     # Batched Levenberg-Marquardt (only works with LS loss).
     ParamsEntry(
         False, 'bLM_damping', bLM.Optimizer_damping,
         Hyperparams(subsample_factor=1, cg_iter=8, M=0.001, factor=5)),
     ParamsEntry(
-        True, 'bLM_armijo', bLM.Optimizer_armijo,
+        False, 'bLM_armijo', bLM.Optimizer_armijo,
         Hyperparams(subsample_factor=0.5, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
     ParamsEntry(
         False, 'bLM_vanstep', bLM.Optimizer_vanstep,
-        Hyperparams(subsample_factor=0.5, cg_iter=20, delta=1, eta=0.5, stepsize=1e-3, stepsize_fix=True)),
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, stepsize=1e-4, stepsize_fix=True)),
 
     # Stochastic (batched) gradient descent.
     ParamsEntry(

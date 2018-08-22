@@ -9,6 +9,17 @@ from matplotlib import pyplot as plt
 
 import deepsplitting.utils.global_config as global_config
 
+plot_properties = global_config.Params(
+    marker_factor=0.04,
+    marker_min=4,
+    hyperparams_y=-0.1,
+    marker=itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x')))
+
+
+def reset_plot_properties():
+    plot_properties.marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
+    plot_properties.hyperparams_y = -0.1
+
 
 class Section(enum.Enum):
     RUN = 0
@@ -18,69 +29,57 @@ class Section(enum.Enum):
     DATA = 4
 
 
-def plot_loss_curve(losses, title=''):
-    plt.figure()
-
-    plt.title(title)
-
-    plt.plot(losses, linewidth=1.0)
-    plt.xlabel('Iteration')
-    plt.ylabel('Objective')
-
-    plt.show()
-
-
-def plot_yaml(files):
-    if len(files) == 0 or files is None:
-        raise ValueError("Requires list of result yaml files.")
-
-    marker = itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x'))
-
-    marker_factor = 0.04
-    marker_min = 4
-    hyperparams_y = -0.1
-
-    # Get length of data from the first file.
-    N = len(load_yaml(files[0])[Section.DATA.value]['Data']['data_loss'])
-    every = max(int(marker_factor * N), marker_min)
-
-    plt.figure(1)
+def clear_plot(plot=1):
+    plt.figure(plot)
     plt.clf()
 
-    keys = []
+    reset_plot_properties()
 
-    for file in files:
-        yaml_dict = load_yaml(file)
 
-        optimizer_key = yaml_dict[Section.RUN.value]
+def save_plot(name, plot=1):
+    plt.figure(plot)
 
-        for loss_key, losses in yaml_dict[Section.DATA.value]['Data'].items():
-            label = "{} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
+    plot_filename = os.path.join(
+        global_config.cfg.results_folder,
+        global_config.cfg.results_subfolders['plots'],
+        name + datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S') + '.pdf')
 
-            plt.plot(losses, label=label, linewidth=1.0, marker=next(marker), markevery=every, markerfacecolor='none')
+    plt.savefig(plot_filename, bbox_inches='tight')
 
-        text = "{}: {}".format(optimizer_key, str(yaml_dict[Section.PARAMS.value]['Parameters']))
-        plt.text(0, hyperparams_y, text, transform=plt.gcf().transFigure)
-        hyperparams_y -= -0.03
 
-        keys.append(optimizer_key)
-        every += 1
+def add_to_plot(file, loss_key, plot=1):
+    yaml_dict = load_yaml(file)
+
+    losses = yaml_dict[Section.DATA.value]['Data'][loss_key]
+
+    every = max(int(plot_properties.marker_factor * len(losses)), plot_properties.marker_min)
+
+    optimizer_key = yaml_dict[Section.RUN.value]
+    label = "{} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
+    text = "{}: {}".format(optimizer_key, str(yaml_dict[Section.PARAMS.value]['Parameters']))
+
+    plt.figure(plot)
+
+    plt.plot(losses, label=label,
+             linewidth=1.0, marker=next(plot_properties.marker), markevery=every, markerfacecolor='none')
+
+    plt.text(0, plot_properties.hyperparams_y, text, transform=plt.gcf().transFigure)
 
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective')
 
-    all_optimizer_keys_str = ''
-    for k in keys:
-        all_optimizer_keys_str += str(k) + '_'
-
-    plot_filename = os.path.join(
-        global_config.cfg.results_folder,
-        global_config.cfg.results_subfolders['plots'],
-        all_optimizer_keys_str + datetime.datetime.now().strftime('%d-%m-%y_%H:%M:%S') + '.pdf')
-
-    plt.savefig(plot_filename, bbox_inches='tight')
     plt.show()
+
+    plot_properties.hyperparams_y -= -0.03
+
+    return optimizer_key
+
+
+def get_results_data(file):
+    yaml_dict = load_yaml(file)
+
+    return yaml_dict[Section.DATA.value]['Data'].keys()
 
 
 def load_yaml(name):
@@ -133,9 +132,9 @@ def save_summary(optimizer, summary, timer):
         save_yaml(optimizer_key, filename, timerstr, all_losses, optimizer[optimizer_key].hyperparams)
 
 
-def mkdir_ifnot(dir):
-    if not os.path.exists(dir):
-        os.mkdir(dir)
+def mkdir_ifnot(directory):
+    if not os.path.exists(directory):
+        os.mkdir(directory)
 
 
 def make_results_folder(cfg):
@@ -153,39 +152,85 @@ class Notebook:
         self.data_folder = os.path.join(results_folder, results_subfolder['data'])
         self.plots_folder = os.path.join(results_folder, results_subfolder['plots'])
 
+        self.results_select = None
+        self.data_select = None
+        self.results_show = None
+
+        self.show_btn = None
+        self.add_to_plot_btn = None
+        self.clear_btn = None
+        self.save_btn = None
+
+        self.main_widget = None
+
+        self.current_keys = []
+
     def create_widgets(self, file_dict):
+        control_label = ipywidgets.Label(value='Select file and add the result data shown on the right to the plot.')
+        results_show_label = ipywidgets.Label(value='Select file to show.')
 
-        def plot_btn_click(x, selected):
-            plot_yaml(selected.value)
+        self.results_select = ipywidgets.Select(options=file_dict, rows=20)
+        self.data_select = ipywidgets.Select(placeholder='Select file.', rows=20,
+                                             layout=ipywidgets.Layout(width='30%'))
 
-        def show_btn_click(_, selected, results_show):
-            selected = selected.value
+        self.results_show = ipywidgets.Textarea(layout=ipywidgets.Layout(width='auto', height='100%'))
 
-            if len(selected) != 1:
-                print('Select one entry to show.')
-                return
+        self.show_btn = ipywidgets.Button(description='Show file', layout=ipywidgets.Layout(width='auto'))
+        self.add_to_plot_btn = ipywidgets.Button(description='Add to plot', layout=ipywidgets.Layout(width='auto'))
+        self.clear_btn = ipywidgets.Button(description='Clear', layout=ipywidgets.Layout(width='auto'))
+        self.save_btn = ipywidgets.Button(description='Save', layout=ipywidgets.Layout(width='auto'))
 
-            with open(os.path.join(self.data_folder, selected[0]), 'r') as f:
-                text = f.read()
+        select_box = ipywidgets.HBox([self.results_select, self.data_select])
 
-            results_show.value = text
+        control_box = ipywidgets.VBox(
+            [control_label, select_box, self.show_btn, self.add_to_plot_btn, self.clear_btn, self.save_btn])
 
-        control_label = ipywidgets.Label(value='Select multiple files by holding Strg.')
-        results_select = ipywidgets.SelectMultiple(options=file_dict, rows=20,
-                                                   layout=ipywidgets.Layout(width='auto'))
-        results_show = ipywidgets.Textarea(placeholder='Selected config file', disabled=False,
-                                           layout=ipywidgets.Layout(align_items='stretch', flex='1 1 auto'))
+        show_box = ipywidgets.VBox([results_show_label, self.results_show],
+                                   layout=ipywidgets.Layout(align_items='stretch', flex='1 1 auto'))
 
-        show_btn = ipywidgets.Button(description='Show', layout=ipywidgets.Layout(width='auto'))
-        show_btn.on_click(lambda x: show_btn_click(x, results_select, results_show))
+        self.main_widget = ipywidgets.HBox([control_box, show_box], layout=ipywidgets.Layout(border='solid'))
 
-        plot_btn = ipywidgets.Button(description='Plot', layout=ipywidgets.Layout(width='auto'))
-        plot_btn.on_click(lambda x: plot_btn_click(x, results_select))
+    def create_actions(self):
+        def add_to_plot_btn_click(_):
+            file = self.results_select.value
+            data = self.data_select.value
 
-        control_box = ipywidgets.VBox([control_label, results_select, show_btn, plot_btn])
-        all_box = ipywidgets.HBox([control_box, results_show], layout=ipywidgets.Layout(border='solid'))
+            if data is not None:
+                key = add_to_plot(file, data)
 
-        return all_box
+                self.current_keys.append(key + '-' + data)
+
+        def show_btn_click(_):
+            selected = self.results_select.value
+
+            with open(os.path.join(self.data_folder, selected), 'r') as file:
+                text = file.read()
+
+            self.results_show.value = text
+
+        def clear_btn_click(_):
+            clear_plot()
+            self.current_keys = []
+
+        def save_btn_click(_):
+            name = ''
+
+            for k in self.current_keys:
+                name += k + '_'
+
+            save_plot(name)
+
+        self.show_btn.on_click(show_btn_click)
+        self.add_to_plot_btn.on_click(add_to_plot_btn_click)
+        self.clear_btn.on_click(clear_btn_click)
+        self.save_btn.on_click(save_btn_click)
+
+        def f(x):
+            results_data = get_results_data(x['new'])
+
+            self.data_select.options = list(results_data)
+
+        self.results_select.observe(f, names='value')
 
     def get_file_list(self):
         file_list = []
@@ -200,4 +245,7 @@ class Notebook:
     def run(self):
         file_list = self.get_file_list()
 
-        IPython.display.display(self.create_widgets(file_list))
+        self.create_widgets(file_list)
+        self.create_actions()
+
+        IPython.display.display(self.main_widget)

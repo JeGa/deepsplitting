@@ -33,7 +33,7 @@ class BarWrapper:
         widgets = [
             progressbar.Percentage(), ' ',
             progressbar.AnimatedMarker(), ' ',
-            progressbar.Bar(), ' ',
+            progressbar.Bar(marker='█'), ' ',
             progressbar.SimpleProgress(), ' ',
             self.format_custom_text, ' ',
             progressbar.ETA()
