@@ -40,7 +40,7 @@ server_cfg = global_config.GlobalParams(
     training_batch_size=50,
     training_samples=1000,  # Take subset of training set.
     forward_chunk_size_factor=0.1,
-    test_interval=-1,  # -1 to disable.
+    test_interval=25,  # -1 to disable.
 
     datatype=torch.double,
     seed=123,
@@ -93,9 +93,9 @@ optimizer_params_ls = [
     # Splitting with different batched LM steps.
     ParamsEntry(
         False, 'sbLM_damping', sbLM.Optimizer_damping,
-        Hyperparams(rho=10, rho_add=0, subsample_factor=1, cg_iter=15, M=0.001, factor=10)),
+        Hyperparams(rho=10, rho_add=0, subsample_factor=1, cg_iter=8, M=0.001, factor=10)),
     ParamsEntry(
-        False, 'sbLM_armijo', sbLM.Optimizer_armijo,
+        True, 'sbLM_armijo', sbLM.Optimizer_armijo,
         Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, cg_iter=20, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
     ParamsEntry(
         False, 'sbLM_vanstep', sbLM.Optimizer_vanstep,
@@ -105,10 +105,10 @@ optimizer_params_ls = [
     # Splitting with batched GD step.
     ParamsEntry(
         False, 'sbGD_fix', sbGD.Optimizer,
-        Hyperparams(rho=10, rho_add=0, subsample_factor=0.7, stepsize=1e-3, vanstep=False)),
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, stepsize=1e-3, vanstep=False)),
     ParamsEntry(
-        True, 'sbGD_vanstep', sbGD.Optimizer,
-        Hyperparams(rho=1, rho_add=0, subsample_factor=1.0, stepsize=1e-3, min_stepsize=1e-5, vanstep=True)),
+        False, 'sbGD_vanstep', sbGD.Optimizer,
+        Hyperparams(rho=1, rho_add=0, subsample_factor=0.5, stepsize=1e-3, min_stepsize=1e-6, vanstep=True)),
 
     # Batched Levenberg-Marquardt (only works with LS loss).
     ParamsEntry(

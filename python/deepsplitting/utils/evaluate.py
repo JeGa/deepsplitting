@@ -165,11 +165,15 @@ class Notebook:
 
         self.current_keys = []
 
-    def create_widgets(self, file_dict):
+    def create_widgets(self, file_list):
         control_label = ipywidgets.Label(value='Select file and add the result data shown on the right to the plot.')
         results_show_label = ipywidgets.Label(value='Select file to show.')
 
-        self.results_select = ipywidgets.Select(options=file_dict, rows=20)
+        def sortfun(x):
+            splitted = x.rsplit('_', maxsplit=2)
+            return splitted[0], splitted[1], splitted[2][:-4]
+
+        self.results_select = ipywidgets.Select(options=sorted(file_list, key=sortfun), rows=20)
         self.data_select = ipywidgets.Select(placeholder='Select file.', rows=20,
                                              layout=ipywidgets.Layout(width='30%'))
 
