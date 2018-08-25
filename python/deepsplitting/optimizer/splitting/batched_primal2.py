@@ -25,9 +25,15 @@ class Optimizer_batched(Optimizer):
         the same order.
         """
         batch_size = global_config.cfg.training_batch_size
-        indices, subsample_size, max_steps = self.fullbatch_subindex_init(batch_size,
-                                                                          self.hyperparams.subsample_factor,
-                                                                          self.N)
+
+        subsample = 'subsample_factor' in self.hyperparams.__dict__.keys()
+
+        if subsample:
+            indices, subsample_size, max_steps = self.fullbatch_subindex_init(batch_size,
+                                                                              self.hyperparams.subsample_factor,
+                                                                              self.N)
+        else:
+            indices, _, max_steps = self.fullbatch_subindex_init(batch_size, 0, self.N)
 
         data_loss_batchstep = []
         lagrangian_batchstep = []
@@ -41,7 +47,10 @@ class Optimizer_batched(Optimizer):
         lagrangian_old = lagrangian_startepoch
 
         for i, index in enumerate(self.batches(indices, batch_size), 1):
-            subindex = self.rand_subindex(batch_size, subsample_size)
+            if subsample:
+                subindex = self.rand_subindex(batch_size, subsample_size)
+            else:
+                subindex = None
 
             self.primal2(inputs, labels, index, subindex)
             self.primal1(inputs, labels)
