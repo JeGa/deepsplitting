@@ -60,8 +60,8 @@ def add_to_plot(file, loss_key, plot=1):
 
     plt.figure(plot)
 
-    plt.plot(losses, label=label,
-             linewidth=1.0, marker=next(plot_properties.marker), markevery=every, markerfacecolor='none')
+    plt.plot(losses, label=label, linewidth=1.0,
+             marker=next(plot_properties.marker), markevery=every, markerfacecolor='none')
 
     plt.text(0, plot_properties.hyperparams_y, text, transform=plt.gcf().transFigure)
 
@@ -156,7 +156,6 @@ class Notebook:
         self.data_select = None
         self.results_show = None
 
-        self.show_btn = None
         self.add_to_plot_btn = None
         self.clear_btn = None
         self.save_btn = None
@@ -167,7 +166,6 @@ class Notebook:
 
     def create_widgets(self, file_list):
         control_label = ipywidgets.Label(value='Select file and add the result data shown on the right to the plot.')
-        results_show_label = ipywidgets.Label(value='Select file to show.')
 
         def sortfun(x):
             splitted = x.rsplit('_', maxsplit=2)
@@ -179,7 +177,6 @@ class Notebook:
 
         self.results_show = ipywidgets.Textarea(layout=ipywidgets.Layout(width='auto', height='100%'))
 
-        self.show_btn = ipywidgets.Button(description='Show file', layout=ipywidgets.Layout(width='auto'))
         self.add_to_plot_btn = ipywidgets.Button(description='Add to plot', layout=ipywidgets.Layout(width='auto'))
         self.clear_btn = ipywidgets.Button(description='Clear', layout=ipywidgets.Layout(width='auto'))
         self.save_btn = ipywidgets.Button(description='Save', layout=ipywidgets.Layout(width='auto'))
@@ -187,9 +184,9 @@ class Notebook:
         select_box = ipywidgets.HBox([self.results_select, self.data_select])
 
         control_box = ipywidgets.VBox(
-            [control_label, select_box, self.show_btn, self.add_to_plot_btn, self.clear_btn, self.save_btn])
+            [control_label, select_box, self.add_to_plot_btn, self.clear_btn, self.save_btn])
 
-        show_box = ipywidgets.VBox([results_show_label, self.results_show],
+        show_box = ipywidgets.VBox([self.results_show],
                                    layout=ipywidgets.Layout(align_items='stretch', flex='1 1 auto'))
 
         self.main_widget = ipywidgets.HBox([control_box, show_box], layout=ipywidgets.Layout(border='solid'))
@@ -204,14 +201,6 @@ class Notebook:
 
                 self.current_keys.append(key + '-' + data)
 
-        def show_btn_click(_):
-            selected = self.results_select.value
-
-            with open(os.path.join(self.data_folder, selected), 'r') as file:
-                text = file.read()
-
-            self.results_show.value = text
-
         def clear_btn_click(_):
             clear_plot()
             self.current_keys = []
@@ -224,15 +213,21 @@ class Notebook:
 
             save_plot(name)
 
-        self.show_btn.on_click(show_btn_click)
         self.add_to_plot_btn.on_click(add_to_plot_btn_click)
         self.clear_btn.on_click(clear_btn_click)
         self.save_btn.on_click(save_btn_click)
 
         def f(x):
-            results_data = get_results_data(x['new'])
+            selected = x['new']
 
+            # Display in data select view.
+            results_data = get_results_data(selected)
             self.data_select.options = list(results_data)
+
+            # Display yaml in text box.
+            with open(os.path.join(self.data_folder, selected), 'r') as file:
+                text = file.read()
+            self.results_show.value = text
 
         self.results_select.observe(f, names='value')
 
