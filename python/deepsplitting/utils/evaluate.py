@@ -5,6 +5,7 @@ import yaml
 import ipywidgets
 import IPython
 import enum
+import math
 from matplotlib import pyplot as plt
 
 import deepsplitting.utils.global_config as global_config
@@ -12,7 +13,7 @@ import deepsplitting.utils.global_config as global_config
 plot_properties = global_config.Params(
     marker_factor=0.04,
     marker_min=4,
-    hyperparams_y=-0.1,
+    hyperparams_y=0,
     marker=itertools.cycle(('s', 'D', '.', 'o', '^', 'v', '*', '8', 'x')))
 
 
@@ -49,21 +50,39 @@ def save_plot(name, plot=1):
 
 def add_to_plot(file, loss_key, plot=1):
     yaml_dict = load_yaml(file)
-
     losses = yaml_dict[Section.DATA.value]['Data'][loss_key]
 
-    every = max(int(plot_properties.marker_factor * len(losses)), plot_properties.marker_min)
+    if not hasattr(add_to_plot, 'every'):
+        add_to_plot.every = max(int(plot_properties.marker_factor * len(losses)), plot_properties.marker_min)
+
+    if not hasattr(add_to_plot, 'text_y'):
+        add_to_plot.text_y = plot_properties.hyperparams_y
 
     optimizer_key = yaml_dict[Section.RUN.value]
     label = "{} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
-    text = "{}: {}".format(optimizer_key, str(yaml_dict[Section.PARAMS.value]['Parameters']))
+
+    params_text = "Optimizer: {}".format(optimizer_key)
+    for key, value in yaml_dict[Section.PARAMS.value]['Parameters'].items():
+        params_text += os.linesep + "{}={}".format(key, value)
+
+    global_config_text = "Config: {} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
+    for i in global_config.cfg.csv_format():
+        global_config_text += os.linesep + i
 
     plt.figure(plot)
 
-    plt.plot(losses, label=label, linewidth=1.0,
-             marker=next(plot_properties.marker), markevery=every, markerfacecolor='none')
+    plt.plot(losses, label=label, linewidth=0.7,
+             marker=next(plot_properties.marker), markevery=add_to_plot.every, markerfacecolor='none')
 
-    plt.text(0, plot_properties.hyperparams_y, text, transform=plt.gcf().transFigure)
+    plt.text(0.05, add_to_plot.text_y, global_config_text,
+             horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
+    plt.text(0.55, add_to_plot.text_y, params_text,
+             horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
+
+    plt.subplots_adjust(bottom=0.15)
+
+    add_to_plot.every += math.ceil(0.1 * add_to_plot.every)
+    add_to_plot.text_y -= 0.55
 
     plt.legend()
     plt.xlabel('Iteration')
@@ -71,7 +90,7 @@ def add_to_plot(file, loss_key, plot=1):
 
     plt.show()
 
-    plot_properties.hyperparams_y -= -0.03
+    plot_properties.hyperparams_y -= 0.1
 
     return optimizer_key
 
