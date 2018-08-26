@@ -27,14 +27,17 @@ def main():
                                                                            global_config.cfg.activation_type)
 
     if global_config.cfg.loss_type == 'ls':
-        optimizer_params = config_file.optimizer_params_ls
+        optimizer_params = config_file.ls_params
     elif global_config.cfg.loss_type == 'nll':
-        optimizer_params = config_file.optimizer_params_nll
+        optimizer_params = config_file.nll_params
     else:
         raise ValueError("Unsupported loss type.")
 
     optimizer = {params.key: params.create(net, N=training_batch_size, hyperparams=params.params) for params in
                  optimizer_params if params.on}
+
+    if len(optimizer) == 0:
+        raise ValueError("No optimizer enabled (set at least one to True).")
 
     # To have the same network parameter initialization for all nets.
     net_init_parameters = next(iter(optimizer.values())).save_params()
