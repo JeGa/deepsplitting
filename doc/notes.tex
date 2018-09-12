@@ -1,111 +1,105 @@
 \documentclass[english,11pt,a4paper]{article}
 
-\input{macros}
+\input{commands}
 
-\newcommand\inner[2]{\langle #1, #2 \rangle}
+% ==============================================================================
+
+%\usepackage{parskip}
 
 \usepackage{a4wide}
 \usepackage{tikz}
-%\usepackage{parskip}
-
-\title{Ideas for Splitting Deep Networks}
-\author{}
 \usepackage{amsmath,epsfig,amssymb,amsbsy}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
-\begin{document}
-\maketitle
+\usepackage[
+	backend=biber,
+	style=numeric,
+	natbib=true,
+	url=false, 
+	doi=true,
+	eprint=false
+]{biblatex}
 
+\addbibresource{references.bib}
+
+\usepackage[
+	a4paper, top=2.5cm, left=2cm, right=2.5cm
+]{geometry}
+
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep}
+
+\usepackage[]{todonotes}
+
+% ==============================================================================
+
+\let\endtitlepage\relax
 \endlinechar=-1
 
-\section{Objective function}
+% ==============================================================================
 
-The aim is to solve a supervised regression or classification problem involving a highly nested objective function. The aim is to learn a mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$. The loss function can be formulated as
+\begin{document}
 
-\begin{equation}
-E(\{W_j\}) = \frac{1}{N} \sum_{i=1}^{N} L(f(\{W_j\};x_i);y_i)
-\label{eq:1}
-\end{equation}
+\begin{titlepage}
+	\centering
+	
+	\includegraphics[width=0.25\textwidth]{images/Universitaet_Logo_RGB}\par
+	\vspace{0.5cm}
+	
+	{\scshape \large Technical University of Munich \par}
+	\vspace{0.5cm}
+	
+	{\bfseries \Large Optimization Algorithms for Deep Learning \par}
+	{Interdisciplinary Project \par}
+	\vspace{0.5cm}
+	
+	{Jens Gansloser \par}
+	{Supervisor: Emanuel Laude \par}
+	\vspace{0.5cm}
+	
+	{\today \par}
+	\vspace{0.5cm}
+\end{titlepage}
 
-with some appropriate error measure $L(y_p;y)$ and model parametrization $\{W_j\}$. The error measure can for example be the squared l2-loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ are the model predictions and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$.
+\section{Introduction}
 
-\section{Solution concept}
+Many complex tasks in engineering and science can be solved by learning a suitable model based on large training data sets with respect to some objective function. The state-of-the-art performing models often consist of deeply nested non-convex and non-smooth functions. With the increase in processing power it has recently become possible to train very deep models based on big datasets, often in a parallel manner. One example for these nested models are neural networks which are achieving high quality results in many application fields, often outperforming more classical methods. However, usually the training is done using stochastic gradient descent which is difficult to parallelize over layers and inhibits bad convergence properties. This work aims to compare different optimization algorithms to optimize deeply nested loss functions. As a baseline for comparing the algorithms we will use stochastic gradient descent. Important for comparisons are convergence properties and stability as well as the possibility to parallelize the algorithms.
 
-In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously.
+\section{Objective Function}
 
-\begin{itemize}
-	\setlength\itemsep{0em}
-	\item Last layer decoupling with ADMM.
-	\item ProxDescent.
-	\item Levenberg-Marquard with least square loss.
-	\item (ProxProp).
-\end{itemize}
-
-\subsection{Idea 1: Per-layer decoupling}
-
-In the following, without loss of generality we consider a 2-layer neural network mapping $f(\{W_j\};x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
+In this work, the aim is to solve a supervised regression or classification problem involving a highly nested objective function. More specifically, a mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$ should be learned. The problem can be written as
 
 \begin{equation}
 	\begin{aligned}
 		& \underset{\{W_j\}}{\text{minimize}}
-		& & L(W_3h(W_2h(W_1x);y).
+		& E(\{W_j\}) = \sum_{i=1}^{N} L(f(\{W_j\};x_i);y_i)
 	\end{aligned}
-	\label{eq:loss_function}
+	\label{eq:basis}
 \end{equation}
 
-To split the nested objective function we decouple the weights and activation functions by introducing additional variables and adding the appropriate constraints. Note that we omit the constant $y$ in the following equations for the sake of simplicity. By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
+with some suitable error measure $L(y_p;y)$ and model parametrization $\{W_j\}$. An example for an error measure is the squared l2-loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ is the model prediction and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. To keep the formulation clear, the biases are incorporated into the weight matrices. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$. Note that the sum over all samples can also be omitted by reformulating the involved functions to act on all training data simultaneously.
+
+\section{Stochastic Gradient Descent}
+
+The standard way of training neural networks is stochastic gradient descent. The gradient descent algorithm is used to find locally optimal parameters $\{W_j\}$. Here, in each step the gradient is calculated using the backpropagation algorithm and a fixed, randomly chosen number of samples from the training data. The network parameters are then updated using a fixed or diminishing stepsize. Note that in the case of stochastic gradient descent, using methods like Armijo linesearch does result in unstable behavior. While this method works often well in practice, it has only linear convergence and the tendency to get stuck at local minima (in comparison to more sophisticated majorization approaches for example). Additionally, finding a suitable step size often involves some heuristics and validation methods. It is well known that backpropagation leads to the vanishing gradient problem and therefore to small gradients which in turn requires the step size to be rather large, possibly leading to divergence of the algorithm.
+
+\section{Solution Concept}
+
+The problems of gradient descent are tackled by using splitting based optimization algorithms \cite{carreira2014distributed,taylor2016training} which show promising results with regard to stability and convergence rate. Thus it seems reasonable to analyze and compare different, more sophisticated optimization algorithms to solve deeply nested loss functions. In the following the used algorithms are explained. In this work we focus on the squared l2 loss. Therefore, additionally to the splitting algorithm we will compare a batched version of the Levenberg-Marquardt method. In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. This formulation is equal to the formulation above, however, the layers now operate on all the data simultaneously as shown in equation~\ref{eq:basis_l2}.
 
 \begin{equation}
-	\begin{aligned}
-		& \underset{\{W_j\},\{a_i\},z}{\text{minimize}}
-		&& L(z) \\
-		& \text{subject to}
-		&&  a_1 = h(W_1x), \\
-		&&& a_2 = h(W_2a_1), \\
-		&&& z = W_3a_2
-	\end{aligned}
+	E(\{W_j\}) = L(f(\{W_j\};x);y) = \frac{1}{2} \| f(\{W_j\};x) - y \|^2
+	\label{eq:basis_l2}
 \end{equation}
 
-with the new variables $a_1, a_2, z$. The augmented Lagrangian of this equality constrained problem is
+For simplicity, in the following we only write $f(\{W_j\})$ and $L(f(\{W_j\}))$ omitting the inputs $x$ and targets $y$. 
 
-\begin{equation}
-	\begin{aligned}
-		\mathcal{L}(\{W_j\}, \{a_i\}, z, \{\lambda_j\}) = L(z) + 
-		& \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
-		& \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
-		& \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2.
-	\end{aligned}
-\end{equation}
+\subsection{Last-layer Splitting}
+\label{sec:last-layer_splitting}
 
-For minimizing the objective we update the weights and constraint variables of subproblems in an alternating fashion using gradient descent. In each update step we only consider the variables of one constraint and fix all other terms of the augmented Lagrangian. This results in one subproblem $\mathcal{H}_i$ for each constraint.
-
-\begin{equation}
-	\begin{aligned}
-		\mathcal{H}_1(W_1,a_1,\lambda_1) &= && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
-			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 \\
-		\mathcal{H}_2(W_2,a_1,a_2,\lambda_2) &= && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
-			& && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
-			& && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 \\
-		\mathcal{H}_3(W_3,a_2,z,\lambda_3) &= && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 + L(y,z) \\
-			& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 
-	\end{aligned}
-\end{equation}
-
-We need to take special care of the first subproblem (constraint for the first layer) involving the input $x$ and the last subproblem (constraint for the last linear layer) involving the predicted variable $z$. For all others we consider the update scheme (here for $\mathcal{H}_2$)
-
-\begin{equation}
-	\begin{aligned}
-		W_2^{t+1} &= W_2^t - \rho_1 \nabla_{W_2}(\mathcal{H}_2(W_2^t,a_1^t,a_2^t,\lambda_2^t)) \\
-		a_1^{t+1} &= a_1^t - \rho_2 \nabla_{a_1}(\mathcal{H}_2(W_2^t,a_1^t,a_2^t,\lambda_2^t)) \\
-		a_2^{t+1} &= a_2^t - \rho_3 \nabla_{a_2}(\mathcal{H}_2(W_2^{t+1},a_1^{t+1},a_2^t,\lambda_2^t)) \\
-		\lambda_2^{t+1} &= \lambda_2^{t} + \rho (h(W_2^{t+1}a_1^{t+1})-a_2^{t+1})
-	\end{aligned}
-\end{equation}
-
-which are gradient descent steps for the primal variables and gradient ascent steps for the dual variable $\lambda$. For $\mathcal{H}_1$ only $W_1$, $a_2$ and $\lambda_1$ need to be updated since $x$ is a constant. For the last subproblem $\mathcal{H}_{K+1}$ we need to add $\nabla_zL(z)$ to the gradient with respect to $z$.
-
-\subsection{Idea 2: Last-layer decoupling}
-
-By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
+By splitting the loss function at the network output and introducing constraints we can reformulate problem~\ref{eq:basis} as
 
 \begin{equation}
 	\begin{aligned}
@@ -114,7 +108,7 @@ By decoupling and introducing constraints we can reformulate problem \ref{eq:los
 		& \text{subject to}
 		&& z = f(\{W_j\}).
 	\end{aligned}
-	\label{eq:llc_problem}
+	\label{eq:last-layer_splitting_problem}
 \end{equation}
 
 The augmented Lagrangian of this equality constrained problem is
@@ -127,16 +121,16 @@ The augmented Lagrangian of this equality constrained problem is
 	\end{aligned}
 \end{equation}
 
-Note that by adding a regularizer $R(\{W_j\}) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem \ref{eq:llc_problem} yields
+Note that by adding a regularizer $R(\{W_j\}) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem~\ref{eq:last-layer_splitting_problem} yields
 
 \begin{equation}
 	\begin{aligned}
-		z^{k+1}
-		&:= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^k, z, \lambda^k)
-		= \underset{z}{\text{arg min }} L(z) + (\rho/2) \| f(\{W_j\}^k) - z + (1/\rho) \lambda^k \|^2 \\
-		\{W_j\}^{k+1}
-		&:= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^{k+1}, \lambda^k)
-		= \underset{\{W_j\}}{\text{arg min }} (\rho/2) \| f(\{W_j\}) - z^{k+1} + (1/\rho) \lambda^k \|^2 \\
+		\{W_j\}^{k+1} &:= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^k, \lambda^k) \\
+		&:= \underset{\{W_j\}}{\text{arg min }} (\rho/2) \| f(\{W_j\}) - z^k + (1/\rho) \lambda^k \|^2 \\
+	
+		z^{k+1} &:= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^{k+1}, z, \lambda^k) \\
+		&:= \underset{z}{\text{arg min }} L(z) + (\rho/2) \| f(\{W_j\}^{k+1}) - z + (1/\rho) \lambda^k \|^2 \\
+		
 		\lambda^{k+1} &:= \lambda^k + \rho (f(\{W_j\}^{k+1})-z^{k+1}).
 	\end{aligned}
 \end{equation}
@@ -150,71 +144,81 @@ The gradients of the two primal problems can be written as
 	\end{aligned}
 \end{equation}
 
-\subsection{Idea 3: Levenberg-Marquardt (when L is least squares)}
+We denote the $\{W_j\}$ problem as primal 1, the $z$ problem as primal 2 and the $\lambda$ problem as dual. Instead of first performing primal 2 as it is usual in the ADMM framework, we first perform primal 1\todo{Why does it work?}. Additionally, we only solve primal 1 inexactly, for example by only doing few gradient descent steps. \\ \\
 
-In the special case when $L(y_p;y) = \frac{1}{2} \|y_p - y\|^2$ we get
+Note that in the case of the squared l2 loss, for a choice of $\rho=1$ the algorithm is equal to gradient descent. Considering an iteration $k$, for $z^{k+1} = \text{arg min } \mathcal{L}(\{W_j\}^{k+1}, z, \lambda^k)$ being a stationary point, the necessary first order optimiality condition hast to hold. Setting the gradient to zero gives $z^{k+1} - \lambda^k - y = \rho(f(\{W_j\}^{k+1}) - z^{k+1})$. The dual can be written as $\lambda^{k+1} - \lambda^k = \rho(f(\{W_j\})^{k+1} - z^{k+1})$. Therefore it holds that $y = z^{k+1} - \lambda^{k+1}$. Considering the next iteration $k+1$, the primal update for the network weights results then by setting $\rho=1$ in 
 
 \begin{equation}
-	E(\{W_j\}) = \frac{1}{2N} \|f(\{W_j\};X) - Y\|^2
+	\{W_j\}^{k+1} = \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^k, \lambda^k)
+	= \frac{1}{2} \|f(\{W_j\}) - y\|^2 = L(f(\{W_j\})).
 \end{equation}
 
-where $X$ and $Y$ are the vectorized training data. The Levenberg-Marquardt algorithm can be used to solve this non-linear least squares problem. Here, $f$ is linearly approximated by $f(\{W_j\}+\delta;X) \approx f(\{W_j\};X) + J_f\delta$ where $J_f$ is the Jacobian at $\{W_j\}$. In each iteration the linearized problem is solved for $\delta$.
+This holds for all iterations except for $k=1$.
+
+\subsubsection{Batched Primal Updates}
+
+The primal update for the network weights can be minimized using various solvers for non-linear problems. However, in practice the training data is too large for a full batch approach. For example, using Levenberg-Marquardt would include solving a system of linear equations involving a coefficient matrix $\mathrm{J}_f^T \mathrm{J}_f$ of size $Nd \times Nd$ with $d$ being the input data dimension. Therefore, we use a batched approach where in each iteration $k$ the primal update for the network weights is done in a batched fashion. The $z$ and $\lambda$ updates are done full batch. In the case of the squared l2 loss both can be solved in closed form. The batched splitting algorithm is shown in algorithm~\ref{alg:sb}.
+
+\begin{algorithm}
+	\caption{Batched last-layer splitting}
+	\label{alg:sb}
+	\begin{algorithmic}[1]
+		\State $x \gets$ Inputs
+		\State $y \gets$ Targets
+		\State Initialize $\{W_j\}^0, z^0, \lambda^0$
+		\State Choose $\rho \in \R$
+		\For{$k = 0,1,2,\dots$}
+			\State $x_k, y_k \gets$ \Call{nextbatch}{$x, y, k$}
+			\State $\{W_j\}^{k+1} \gets$ \Call{primal1}{$x_k,y_k$}
+			\State $z^{k+1} \gets$ \Call{primal2}{$x,y$}
+			\State $\lambda^{k+1} \gets \lambda^k + \rho (f(\{W_j\}^{k+1};x)-z^{k+1})$
+		\EndFor
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Levenberg-Marquardt}
+
+The Levenberg-Marquardt algorithm can be used to iteratively solve the non-linear least squares problem shown in \ref{eq:basis_l2}. Here, in each iteration $f$ is linearly approximated by $f(\{W_j\}+\delta;x) \approx f(\{W_j\};x) + \mathrm{J}\delta$ where $\mathrm{J}$ is the Jacobian at $\{W_j\}$. In each iteration the linearized problem shown in equation~\ref{eq:linearized_ls} is solved for $\delta$.
 
 \begin{equation}
-	E(\{W_j\}+\delta) \approx \frac{1}{2N} \|f(\{W_j\};X) + J_f\delta - Y\|^2
+	E(\{W_j\}+\delta) \approx \frac{1}{2} \|f(\{W_j\};x) + \mathrm{J}\delta - y\|^2
+	\label{eq:linearized_ls}
 \end{equation}
 
 The normal equations yield
 
 \begin{equation}
-	(J_f^TJ_f) \delta = J_f^T(Y - f(\{W_j\};X)).
+	(\mathrm{J}^T \mathrm{J}) \delta = \mathrm{J}^T(y - f(\{W_j\};x)).
 \end{equation}
 
-By adding a damping term to the left-hand side we get the Levenberg-Marquardt algorithm.
+By adding a damping term to the coefficient matrix on the left-hand side (which is equal to adding a regularizer term of the weights to the original problem) we get the Levenberg-Marquardt algorithm shown in equation~\ref{eq:levenberg-marquardt}.
 
 \begin{equation}
-	(J_f^TJ_f + \lambda I) \delta = J_f^T(Y - f(\{W_j\};X)).
+	(\mathrm{J}^T \mathrm{J} + \lambda I) \delta = \mathrm{J}^T(y - f(\{W_j\};x)).
+	\label{eq:levenberg-marquardt}
 \end{equation}
 
-The parameters are update in each step $\{W_j\}^{(t+1)} = \{W_j\}^t + \delta$.
+The parameters are update in each step according to $\{W_j\}^{k+1} = \{W_j\}^k + \delta$. To find a suitable damping parameter $\lambda$ trust-region or line search methods can be used.
+
+\subsubsection{Batched Levenberg-Marquardt}
+
+Levenberg-Marquardt can only applied efficiently when the dimension of the mapping $f$ is relatively small. However, in our case we have large training data sets, which results in very large Jacobians. Similar to the splitting algorithm used, we use a batched variant of the Levenberg-Marquardt algorithm where only a randomly sampled subset of the training data is used to calculate the Jacobian\todo{Convergence proof?}.
+
+\section{Experiments}
+
+For the experiments the well known MNIST data set is used. It consist of. For efficient matrix calculus and utilization of GPUs the \textit{pytorch} library is used. In the experiments we compared. Good stepsize parameters are empirically determined.
+
+% ==============================================================================
+
+\newpage
 
 \section{Appendix}
 
-\subsection{Notation}
-
-For a matrix $X$, $X_{ij}$ selects the element in row $i$ and column $j$. If only one index is present, depending on the subscript a matrix row or column is select. In this case, $X_i$ is row $i$, $X_j$ is column $j$.
-
-\subsection{Energy gradients}
-
-For the update steps we need the gradient of the terms $f(W,x,a,\lambda) = \inner{\lambda}{h(Wx)-a}$ and $g(W,x,a) = (1/2) \| h(Wx) - a \|^2$ with respect to $W \in \R^{m \times n}$, $x \in \R^{n \times p}$, $a \in \R^{m \times p}$ and $\lambda \in \R^{m \times p}$. The function $h$ is applied element-wise. Note that for the inner product the matrices are vectorized. \\ \\
-For the gradients we need the following intermediate results. For applying the chain-rule the derivatives of $h(Wx) = h \in \R^{m \times p}$ w.r.t $W$ and $x$ are required. Taking the derivative for each element the entries for the Jacobian are $\partial_{W_i}h_{ij} = h'(W_i x_j) x_j^T$. Similarly, for the derivatives w.r.t. $x$ we get $\partial_{x_j}h_{ij} = h'(W_i x_j) W_i^T $. Note that we can easily get a formulation for all matrix elements at once by the fact that for the Jacobians it holds that $J_{(f \circ g)} = J_f \cdot J_g$ and row $i$ of $J_f$ is $\nabla f_i$. This results in
-
-\begin{equation}
-	\begin{aligned}
-		\partial_{W_i} f(W,x,a,\lambda) &= \sum_{j=1}^{p} \lambda_{ij} h'(W_i x_j) x_j^T \\
-		\partial_{x_j} f(W,x,a,\lambda) &= \sum_{i=1}^{m} \lambda_{ij} h'(W_i x_j) W_i^T \\
-		\partial_{\lambda} f(W,x,a,\lambda) &= h(W x) - a \\
-		\partial_{a} f(W,x,a,\lambda) &= -\lambda
-	\end{aligned}
-\end{equation}
-
-for the gradients of $f$. For $g$ the gradients are
-
-\begin{equation}
-	\begin{aligned}
-		\partial_{W_i} g(W,x,a) &= \sum_{j=1}^{p} (h(W_i x_j) - a_{ij}) h'(W_i x_j) x_j^T \\
-		\partial_{x_j} g(W,x,a) &= \sum_{i=1}^{m} (h(W_i x_j) - a_{ij}) h'(W_i x_j) W_i \\		
-		\partial_{a} g(W,x,a) &= a - h(Wx). \\
-	\end{aligned}
-\end{equation}
-
-Note that the expressions are in a format where we get a short formula. For calculating the matrix derivatives for all rows or for the complete matrix at once some matrix stacking is required which would result in a longer expression.
-
-For the multi-class classification experiments we use the softmax error function $\ell(x)_i = \exp(x_i)/(\sum_{j=1}^{n} \exp(x_j))$ where $x \in \R^n$. The derivative of the softmax function is $\partial_{x_k} \ell(x)_i = \ell(x)_i (\delta_{ik} - \ell(x)_k)$.
-
 \subsection{Backpropagation}
 
-As baseline we train the loss function using gradient descent. To calculate the gradients $\nabla_{W}E(W)$ of the loss function $E(W)$ backpropagation is used. Starting from the definition of the loss function in equation \ref{eq:1} we can calculate the gradient for each sample separately by computing $\nabla_{W}L(f(W;x_i);y_i)$ and summing over all samples. In the following we consider $W_{jk}^l$ as the weight connecting neuron $k$ to neuron $j$ of layer $l$. The linearities in layer $l$ are written as $z^l = W^la^{l-1} + b^l$ operating on the activations $a^{l-1}$. The activations of layer $l$ are computed as $a^l = h(W^l a^{l-1} + b^l) = h(z^l)$ with activation function $h$. Additionally, we have used the explicit formulation with the bias being a separate variable. This could also be included in the weight matrix by augmenting the activation vector with one and augmenting the weight matrix with the bias vector as last column. Figure \ref{fig:backprop} shows the neural network model at a layer $l$. We introduce the convention of $E^l_a$ being the error function of layer $l$ given the activations and $E^l_z$ being the error function of layer $l$ given the linearities. This allows us to split the error function and use the chain rule for computing the derivatives. Using this formulation, the goal is to calculate $\nabla_{W}E(W,b)$ and $\nabla_{b}E(W,b)$. By fixing all remaining weights and biases and applying the chain rule we get
+For a matrix $X$, $X_{ij}$ selects the element in row $i$ and column $j$. If only one index is present, depending on the subscript a matrix row or column is select. In this case, $X_i$ is row $i$, $X_j$ is column $j$. \\ \\
+
+As baseline we train the loss function using gradient descent. To calculate the gradients $\nabla_{W}E(W)$ of the loss function $E(W)$ backpropagation is used. Starting from the definition of the loss function in equation~\ref{eq:basis} we can calculate the gradient for each sample separately by computing $\nabla_{W}L(f(W;x_i);y_i)$ and summing over all samples. In the following we consider $W_{jk}^l$ as the weight connecting neuron $k$ to neuron $j$ of layer $l$. The linearities in layer $l$ are written as $z^l = W^la^{l-1} + b^l$ operating on the activations $a^{l-1}$. The activations of layer $l$ are computed as $a^l = h(W^l a^{l-1} + b^l) = h(z^l)$ with activation function $h$. Additionally, we have used the explicit formulation with the bias being a separate variable. This could also be included in the weight matrix by augmenting the activation vector with one and augmenting the weight matrix with the bias vector as last column. Figure \ref{fig:backprop} shows the neural network model at a layer $l$. We introduce the convention of $E^l_a$ being the error function of layer $l$ given the activations and $E^l_z$ being the error function of layer $l$ given the linearities. This allows us to split the error function and use the chain rule for computing the derivatives. Using this formulation, the goal is to calculate $\nabla_{W}E(W,b)$ and $\nabla_{b}E(W,b)$. By fixing all remaining weights and biases and applying the chain rule we get
 
 \begin{equation}
 	\begin{aligned}
@@ -291,12 +295,12 @@ To efficiently implement backpropagation we can directly derive a matrix formula
 	\begin{aligned}
 		\delta^l_m &= \delta^{l+1}_m W^{l+1} h'(z^l) = \delta^{l+1}_m W^{l+1} \odot H'(z^l)^T, \\
 		\delta^L_m &= \text{reshape}(\frac{\partial L(z^L)}{\partial z^L}) = L_m, \\
-		D_W^l &= \text{reshape}(\delta^l J^l), \\
+		D_W^l &= \text{reshape}(\delta^l \mathrm{J}^l), \\
 		D_b^l &= \sum_{i=1}^{N} (\delta^l_m)_{i}^T.
 	\end{aligned}
 \end{equation}
 
-The gradients are represented by $\nabla_{W^l}E = D^l_W$ and $\nabla_{b^l}E = D^l_b$. Each row in the matrix $L_m$ is the transpose gradient w.r.t. each sample point $\nabla L(z^L_i)$. Each row of the matrix $H'$ is the derivative of the activation function applied element wise to the each sample point. For $D^l_b$ the summation is over the rows $i$ of the matrix $\delta^l_m$. Note that $D^l_W$ can be implemented faster using per element multiplication but is written in full matrix form for easier reading. The matrix $J^l$ is the Jacobian $\frac{\partial z^l}{\partial W^l}$ with $W^l$ in row-major or column-major vectorization. In this formulation the vector version of the error variable $\delta^l$ is used. The reshape function extracts the rows and columns accordingly to get the matrix form.
+The gradients are represented by $\nabla_{W^l}E = D^l_W$ and $\nabla_{b^l}E = D^l_b$. Each row in the matrix $L_m$ is the transpose gradient w.r.t. each sample point $\nabla L(z^L_i)$. Each row of the matrix $H'$ is the derivative of the activation function applied element wise to the each sample point. For $D^l_b$ the summation is over the rows $i$ of the matrix $\delta^l_m$. Note that $D^l_W$ can be implemented faster using per element multiplication but is written in full matrix form for easier reading. The matrix $\mathrm{J}^l$ is the Jacobian $\frac{\partial z^l}{\partial W^l}$ with $W^l$ in row-major or column-major vectorization. In this formulation the vector version of the error variable $\delta^l$ is used. The reshape function extracts the rows and columns accordingly to get the matrix form.
 
 \subsection{Softmax}
 
@@ -311,70 +315,70 @@ The softmax function is often used as last layer in classification tasks. It ena
 
 where $\sum_{i=1}^{d}\phi(x)_i = 1$. We also can write the softmax function in matrix form where $\phi$ is applied to each column of $x \in \R^{d \times N}$. The resulting Jacobian is then a block-diagonal matrix.
 
-%\subsection{Cross-Entropy loss}
-%
-%A very common loss function for classification is the cross-entropy loss (I wont state the explanation from information theory here). However, in the literature there are various derivations and formulations of this loss function. The cross entropy between two probability distributions $p$ and $q$ is defined as
-%
-%\begin{equation}
-%	\begin{aligned}
-%		H(p,q) = E_p[-\text{log}(q)].
-%	\end{aligned}
-%\end{equation}
-%
-%Starting from a general probabilistic viewpoint, lets define the likelihood of a family of models (indexed by the parameters $\theta$) given the data as $p(y|X;\theta)$ with $X$ being the input samples and $y$ the ground truth. In the maximum likelihood approach, we maximize this probability w.r.t. the parameters $\theta$ as shown in the following equation.
-%
-%\begin{equation}
-%	\begin{aligned}
-%		\theta_{ML} = && \underset{\theta}{\text{arg max}}
-%		&& p(y|X;\theta)
-%	\end{aligned}
-%\end{equation}
-%
-%Which is equivalent to minimizing the negative log likelihood. Additionally assuming i.i.d samples this results in
-%
-%\begin{equation}
-%\begin{aligned}
-%L(y_t;y) = -\text{log}((y_t)_y)
-%\end{aligned}
-%\end{equation}
-%
-%\begin{equation}
-%	p(y) = \prod_{i=1}^{c} \theta^{[y=i]}_i
-%\end{equation}
-%
-%\begin{equation}
-%	\begin{aligned}
-%		L(y_t;y) = -\text{log}((y_t)_y)
-%	\end{aligned}
-%\end{equation}
-%
-%So maximum likelihood results in minimizing the cross entropy between empirical data distribution and unknown model distribution.
-%
-%The $y_t$ can be interpreted as probability distribution (from a softmax layer for example), $y$ is the true label.
-%
-%Multinomial.
-%
-%Keep in mind that there is also a different definition of cross entropy loss. In classification, it is also possible to interpret the likelihood for each label separately as Bernoulli distributed. TODO. This results in the summation of all labels with a per-label cross entropy loss
-%
-%\begin{equation}
-%	\begin{aligned}
-%		L(y_t;y) = -\sum_{i=1}^{c} y_i \text{log}(y_t)_i + (1 - y_i) \text{log}(1 - (y_t)_i)
-%	\end{aligned}
-%\end{equation}
-%
-%with $c$ the number of classes. In this case, the outputs do not have to form a probability distribution and can be for example from a sigmoid function. In the case of binary classification (only two classes) the two definitions are equal.
+\subsection{Per-layer Splitting}
 
-\section{Additional notes and to-dos}
+In comparison to the last-layer splitting explained in section~\ref{sec:last-layer_splitting} it is also possible to split the loss function at each layer. This section describes this approach. In the following, without loss of generality we consider a 2-layer neural network mapping $f(\{W_j\};x) = W_3h(W_2h(W_1x))$ with a linear mapping to the output variables. The unconstrained optimization problem can then be written as
 
-\begin{itemize}
-	\item Could add regularizer for the weights.
-	\item Put in $L$ the groundtruth as constants.
-\end{itemize}
+\begin{equation}
+	\begin{aligned}
+		& \underset{\{W_j\}}{\text{minimize}}
+		& & L(W_3h(W_2h(W_1x);y).
+	\end{aligned}
+	\label{eq:loss_function}
+\end{equation}
 
-{\small
-  \bibliographystyle{ieee}
-  \bibliography{references}
-}
+To split the nested objective function we decouple the weights and activation functions by introducing additional variables and adding the appropriate constraints. Note that we omit the constant $y$ in the following equations for the sake of simplicity. By decoupling and introducing constraints we can reformulate problem \ref{eq:loss_function} as
+
+\begin{equation}
+	\begin{aligned}
+		& \underset{\{W_j\},\{a_i\},z}{\text{minimize}} && L(z) \\
+		& \text{subject to} & a_1 &= h(W_1x), \\
+		&& a_2 &= h(W_2a_1), \\
+		&& z &= W_3a_2
+	\end{aligned}
+\end{equation}
+
+with the new variables $a_1, a_2, z$. The augmented Lagrangian of this equality constrained problem is
+
+\begin{equation}
+	\begin{aligned}
+		\mathcal{L}(\{W_j\}, \{a_i\}, z, \{\lambda_j\}) = L(z) + 
+		& \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+		& \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
+		& \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2.
+	\end{aligned}
+\end{equation}
+
+For minimizing the objective we update the weights and constraint variables of subproblems in an alternating fashion using gradient descent. In each update step we only consider the variables of one constraint and fix all other terms of the augmented Lagrangian. This results in one subproblem $\mathcal{H}_i$ for each constraint.
+
+\begin{equation}
+	\begin{aligned}
+		\mathcal{H}_1(W_1,a_1,\lambda_1) &= && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+		& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 \\
+		\mathcal{H}_2(W_2,a_1,a_2,\lambda_2) &= && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2 + \\
+		& && \inner{\lambda_1}{h(W_1x)-a_1} + (\rho/2) \| h(W_1x)-a_1 \|^2 + \\
+		& && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 \\
+		\mathcal{H}_3(W_3,a_2,z,\lambda_3) &= && \inner{\lambda_3}{W_3a_2-z} + (\rho/2) \| W_3a_2-z \|^2 + L(y,z) \\
+		& && \inner{\lambda_2}{h(W_2a_1)-a_2} + (\rho/2) \| h(W_2a_1)-a_2 \|^2
+	\end{aligned}
+\end{equation}
+
+We need to take special care of the first subproblem (constraint for the first layer) involving the input $x$ and the last subproblem (constraint for the last linear layer) involving the predicted variable $z$. For all others we consider the update scheme (here for $\mathcal{H}_2$)
+
+\begin{equation}
+	\begin{aligned}
+		W_2^{k+1} &= W_2^k - \rho_1 \nabla_{W_2}(\mathcal{H}_2(W_2^k,a_1^k,a_2^k,\lambda_2^k)) \\
+		a_1^{k+1} &= a_1^k - \rho_2 \nabla_{a_1}(\mathcal{H}_2(W_2^k,a_1^k,a_2^k,\lambda_2^k)) \\
+		a_2^{k+1} &= a_2^k - \rho_3 \nabla_{a_2}(\mathcal{H}_2(W_2^{k+1},a_1^{k+1},a_2^k,\lambda_2^k)) \\
+		\lambda_2^{k+1} &= \lambda_2^{k} + \rho (h(W_2^{k+1}a_1^{k+1})-a_2^{k+1})
+	\end{aligned}
+\end{equation}
+
+which are gradient descent steps for the primal variables and gradient ascent steps for the dual variable $\lambda$. For $\mathcal{H}_1$ only $W_1$, $a_2$ and $\lambda_1$ need to be updated since $x$ is a constant. For the last subproblem $\mathcal{H}_{K+1}$ we need to add $\nabla_zL(z)$ to the gradient with respect to $z$.
+
+\pagebreak
+
+\printbibliography
 
 \end{document}
 
