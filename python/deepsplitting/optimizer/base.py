@@ -32,14 +32,17 @@ class BaseOptimizer:
 
         if initializer is Initializer.DEBUG:
             def init_fun(submodule):
-                if type(submodule) == torch.nn.Linear:
+                if type(submodule) == torch.nn.Linear or type(submodule) == torch.nn.Conv2d:
                     submodule.weight.data.fill_(1)
                     submodule.bias.data.fill_(1)
 
             self.net.apply(init_fun)
         elif initializer is Initializer.RANDN:
             def init_fun(submodule):
-                if type(submodule) == torch.nn.Linear:
+                if type(submodule) == torch.nn.Linear or type(submodule) == torch.nn.Conv2d:
+                    if global_config.cfg.seed != -1:
+                        torch.manual_seed(global_config.cfg.seed)
+
                     torch.nn.init.normal_(submodule.weight)
                     torch.nn.init.normal_(submodule.bias)
 
@@ -233,6 +236,9 @@ class BaseOptimizer:
     @staticmethod
     def fullbatch_subindex_init(batch_size, subsample_factor, N):
         subsample_size = int(subsample_factor * batch_size)
+
+        if global_config.cfg.batch_seed != -1:
+            torch.manual_seed(global_config.cfg.seed)
 
         indices = torch.randperm(N)
 

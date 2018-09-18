@@ -28,16 +28,18 @@ class Optimizer(BaseOptimizer):
         self.init_variables(Initializer.RANDN)
 
     def init_variables(self, initializer):
-        self.lam = torch.ones(self.N, self.net.output_dim,
-                              dtype=global_config.cfg.datatype,
-                              device=global_config.cfg.device)
+        self.lam = torch.zeros(self.N, self.net.output_dim,
+                               dtype=global_config.cfg.datatype,
+                               device=global_config.cfg.device)
 
         if initializer is Initializer.DEBUG:
             self.v = torch.zeros(self.N, self.net.output_dim,
                                  dtype=global_config.cfg.datatype,
                                  device=global_config.cfg.device)
         else:
-            torch.manual_seed(global_config.cfg.seed)
+            if global_config.cfg.seed != -1:
+                torch.manual_seed(global_config.cfg.seed)
+
             self.v = 0.1 * torch.randn(self.N, self.net.output_dim,
                                        dtype=global_config.cfg.datatype,
                                        device=global_config.cfg.device)
@@ -66,6 +68,10 @@ class Optimizer(BaseOptimizer):
         y = self.forward(inputs, global_config.cfg.forward_chunk_size_factor)
 
         data_loss = self.net.criterion(y, labels)
+
+        # TODO: This compares the losses.
+        #data_loss = 0.5 * torch.pow((y - labels), 2).sum()
+        # print(data_loss, data_loss_tmp)
 
         lagrangian_data_loss = self.net.criterion(self.v, labels)
         constraint = y - self.v
