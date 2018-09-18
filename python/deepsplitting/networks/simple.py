@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
+from .base import BaseNetwork
 
 
-class SimpleConvNet_mnist(torch.nn.Module):
+class SimpleConvNet_mnist(BaseNetwork):
     def __init__(self, h, criterion):
         super(SimpleConvNet_mnist, self).__init__()
 
@@ -27,11 +28,8 @@ class SimpleConvNet_mnist(torch.nn.Module):
 
         return x
 
-    def loss(self, inputs, labels):
-        return self.criterion(self(inputs), labels)
 
-
-class SimpleConvNet_cifar(torch.nn.Module):
+class SimpleConvNet_cifar(BaseNetwork):
     """
     From pytorch tutorial.
 
@@ -67,11 +65,8 @@ class SimpleConvNet_cifar(torch.nn.Module):
 
         return x
 
-    def loss(self, inputs, labels):
-        return self.criterion(self(inputs), labels)
 
-
-class SimpleSmallConvNet(torch.nn.Module):
+class SimpleSmallConvNet(BaseNetwork):
     """
     From pytorch tutorial.
 
@@ -103,11 +98,8 @@ class SimpleSmallConvNet(torch.nn.Module):
 
         return x
 
-    def loss(self, inputs, labels):
-        return self.criterion(self(inputs), labels)
 
-
-class SimpleFFNet(torch.nn.Module):
+class SimpleFFNet(BaseNetwork):
     def __init__(self, layers, h, criterion):
         super(SimpleFFNet, self).__init__()
 
@@ -148,9 +140,6 @@ class SimpleFFNet(torch.nn.Module):
         self.z.append(zL)
 
         return zL
-
-    def loss(self, inputs, labels):
-        return self.criterion(self(inputs), labels)
 
     def weights(self, L):
         """
