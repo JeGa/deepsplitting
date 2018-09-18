@@ -48,15 +48,7 @@ def save_plot(name, plot=1):
     plt.savefig(plot_filename, bbox_inches='tight')
 
 
-def add_to_plot(file, loss_key, plot=1):
-    def clear():
-        if hasattr(add_to_plot, 'every'):
-            del add_to_plot.every
-        if hasattr(add_to_plot, 'text_y'):
-            del add_to_plot.text_y
-
-    add_to_plot.clear = clear
-
+def add_to_plot(file, loss_key, plot=1, verbose=True):
     yaml_dict = load_yaml(file)
     losses = yaml_dict[Section.DATA.value]['Data'][loss_key]
 
@@ -67,7 +59,9 @@ def add_to_plot(file, loss_key, plot=1):
         add_to_plot.text_y = plot_properties.hyperparams_y
 
     optimizer_key = yaml_dict[Section.RUN.value]
-    label = "{} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
+    label = "{} {}".format(optimizer_key, loss_key)
+    if verbose:
+        label += ' ' + yaml_dict[Section.TIME.value]['Time'] + 's'
 
     params_text = "Optimizer: {}".format(optimizer_key)
     for key, value in yaml_dict[Section.PARAMS.value]['Parameters'].items():
@@ -84,15 +78,16 @@ def add_to_plot(file, loss_key, plot=1):
     plt.plot(losses, label=label, linewidth=0.4,
              marker=next(plot_properties.marker), markevery=add_to_plot.every, markerfacecolor='none')
 
-    plt.text(0.05, add_to_plot.text_y, global_config_text,
-             horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
-    plt.text(0.55, add_to_plot.text_y, params_text,
-             horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
+    if verbose:
+        plt.text(0.05, add_to_plot.text_y, global_config_text,
+                 horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
+        plt.text(0.55, add_to_plot.text_y, params_text,
+                 horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
+
+        add_to_plot.every += math.ceil(0.1 * add_to_plot.every)
+        add_to_plot.text_y -= 0.55
 
     plt.subplots_adjust(bottom=0.15)
-
-    add_to_plot.every += math.ceil(0.1 * add_to_plot.every)
-    add_to_plot.text_y -= 0.55
 
     plt.legend()
     plt.xlabel('Iteration')
@@ -101,6 +96,16 @@ def add_to_plot(file, loss_key, plot=1):
     plt.show()
 
     return optimizer_key
+
+
+def clear():
+    if hasattr(add_to_plot, 'every'):
+        del add_to_plot.every
+    if hasattr(add_to_plot, 'text_y'):
+        del add_to_plot.text_y
+
+
+add_to_plot.clear = clear
 
 
 def get_results_data(file):
@@ -187,11 +192,13 @@ class Notebook:
         self.clear_btn = None
         self.save_btn = None
 
+        self.verbose_plot_checkbox = None
+
         self.main_widget = None
 
         self.current_keys = []
 
-        clear_plot()
+        reset_plot_properties()
         add_to_plot.clear()
 
     def create_widgets(self, file_list):
@@ -211,10 +218,14 @@ class Notebook:
         self.clear_btn = ipywidgets.Button(description='Clear', layout=ipywidgets.Layout(width='auto'))
         self.save_btn = ipywidgets.Button(description='Save', layout=ipywidgets.Layout(width='auto'))
 
+        self.verbose_plot_checkbox = ipywidgets.Checkbox(value=True, description='Verbose plot.', disabled=False,
+                                                         layout=ipywidgets.Layout(width='auto'))
+
         select_box = ipywidgets.HBox([self.results_select, self.data_select])
 
-        control_box = ipywidgets.VBox(
-            [control_label, select_box, self.add_to_plot_btn, self.clear_btn, self.save_btn])
+        control_box = ipywidgets.VBox([control_label, select_box,
+                                       self.add_to_plot_btn, self.clear_btn, self.save_btn,
+                                       self.verbose_plot_checkbox])
 
         show_box = ipywidgets.VBox([self.results_show],
                                    layout=ipywidgets.Layout(align_items='stretch', flex='1 1 auto'))
@@ -226,8 +237,10 @@ class Notebook:
             file = self.results_select.value
             data = self.data_select.value
 
+            verbose = self.verbose_plot_checkbox.value
+
             if data is not None:
-                key = add_to_plot(file, data)
+                key = add_to_plot(file, data, verbose=verbose)
 
                 self.current_keys.append(key + '-' + data)
 
