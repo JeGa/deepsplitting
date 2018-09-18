@@ -16,6 +16,35 @@ import deepsplitting.utils.misc
 import deepsplitting.config as config_file
 import deepsplitting.utils.global_config as global_config
 
+import torch
+import deepsplitting.utils.misc as misc
+
+
+def temp(net, dataloader):
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-5)
+
+    num_epochs = 500
+
+    for epoch in range(num_epochs):
+        for data in dataloader:
+            img, _ = data
+
+            output = net(img)
+            loss = criterion(output, img.view(img.size(0), -1))
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        print('epoch [{}/{}], loss:{:.4f}'.format(epoch + 1, num_epochs, loss.data[0]))
+
+    img, _ = iter(dataloader).next()
+    out = net(img).view(img.size())
+
+    misc.imshow_grid(img[0:])
+    misc.imshow_grid(out[0:].detach())
+
 
 def main():
     if global_config.cfg.logging != -1:
@@ -25,6 +54,9 @@ def main():
 
     net, trainloader, training_batch_size, classes = initializer.cnn_mnist(global_config.cfg.loss_type,
                                                                            global_config.cfg.activation_type)
+
+    # net, trainloader, training_batch_size, classes = initializer.cnn_autoencoder_mnist(global_config.cfg.loss_type,
+    #                                                                                   global_config.cfg.activation_type)
 
     if global_config.cfg.loss_type == 'ls':
         optimizer_params = config_file.ls_params
@@ -83,14 +115,15 @@ def train_all(optimizer, trainloader, net_init_parameters, classes):
             else:
                 train_lm(opt, key, trainloader, net_init_parameters, summary)
 
-        if global_config.cfg.loss_type == 'ls':
-            correct, samples = testrun.test_ls(opt.net, trainloader, classes)
-        elif global_config.cfg.loss_type == 'nll':
-            correct, samples = testrun.test_nll(opt.net, trainloader)
-        else:
-            raise ValueError()
+        # TODO
+        # if global_config.cfg.loss_type == 'ls':
+        #    correct, samples = testrun.test_ls(opt.net, trainloader, classes)
+        # elif global_config.cfg.loss_type == 'nll':
+        #    correct, samples = testrun.test_nll(opt.net, trainloader)
+        # else:
+        #    raise ValueError()
 
-        print("{} of {} correctly classified.".format(correct, samples))
+        # print("{} of {} correctly classified.".format(correct, samples))
 
     deepsplitting.utils.evaluate.save_summary(optimizer, summary, timer)
 
