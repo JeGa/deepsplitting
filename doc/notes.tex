@@ -31,7 +31,7 @@
 \usepackage{enumitem}
 \setlist[itemize]{noitemsep}
 
-\usepackage[]{todonotes}
+\usepackage[disable]{todonotes}
 
 % ==============================================================================
 
@@ -82,23 +82,31 @@ In this work, the aim is to solve a supervised regression or classification prob
 	\label{eq:basis}
 \end{equation}
 
-with some suitable error measure $L_i(y_p;y)$, model parametrization $\{W_j\}$ and optional regularizer $R$. An example for an error measure is the squared l2 loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ is the model prediction and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x)))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. To keep the formulation clear, the biases are incorporated into the weight matrices. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$. Note that the sum over all samples can also be omitted by reformulating the involved functions to act on all training data simultaneously as shown on the right-hand side in equation~\ref{eq:basis}. In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. For simplicity, in the following we define $u = \{W_j\}$ and write $f(u)$ and $L(f(u))$, omitting the inputs $x$ and targets $y$. Additionally, we assume $R(u) = 0$, since the regularizer does not influence the comparisons of the different algorithms.
+with some suitable error measure $L_i(y_p;y)$, model parametrization $\{W_j\}$ and optional regularizer $R$. An example for an error measure is the squared l2 loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ is the model prediction and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x)))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. To keep the formulation clear, the biases are integrated into the weight matrices. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$. Note that the sum over all samples can also be omitted by reformulating the involved functions to act on all training data simultaneously as shown on the right-hand side of equation~\ref{eq:basis}. In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. For simplicity, in the following we define $u = \{W_j\}$ and write $f(u)$ and $L(f(u))$, omitting the inputs $x$ and targets $y$. Additionally, we assume $R(u) = 0$, since the regularizer does not influence the comparisons of the different algorithms.
 
 \section{Stochastic Gradient Descent}
 
-The standard way of training neural networks is stochastic gradient descent. The gradient descent algorithm is used to find locally optimal parameters $u$. Here, in each step the gradient is calculated using the backpropagation algorithm and a fixed, randomly chosen number of samples from the training data. The network parameters are then updated using a fixed or diminishing stepsize. Note that in the case of stochastic gradient descent, using methods like Armijo linesearch does result in unstable behavior. For the convergence of this method the gradient needs to be lipschitz continuous. While this method works often well in practice, it has only linear convergence and the tendency to get stuck at local minima, in comparison to more sophisticated majorization approaches. Additionally, finding a suitable step size often involves some heuristics and validation methods. It is well known that backpropagation leads to the vanishing gradient problem and therefore to small gradients which in turn requires the step size to be rather large, possibly leading to divergence of the algorithm.
+The standard way of training neural networks is stochastic gradient descent. The gradient descent algorithm is used to find locally optimal parameters $u$. Here, in each step the gradient is calculated using the backpropagation algorithm and a fixed, randomly chosen number of samples from the training data. The network parameters are then updated using a fixed or diminishing stepsize. Note that in the case of stochastic gradient descent, using methods like Armijo linesearch does result in unstable behavior. For the convergence of this method the gradient needs to be Lipschitz continuous. The (deterministic) gradient descent scheme can be derived by approximating the objective function at each iteration using the convex majorizer
+
+\begin{equation}
+	E_{u^k}(u) = E(u^k) + \inner{\nabla E(u^k)}{u - u^k} + \frac{1}{2 \tau} \|u - u^k\|^2.
+	\label{eq:gd_majorizer}
+\end{equation}
+
+
+While this method works often well in practice, it has only linear convergence and the tendency to get stuck at local minima, in comparison to more sophisticated majorization approaches. Additionally, finding a suitable step size often involves some heuristics and validation methods. It is well known that backpropagation leads to the vanishing gradient problem and therefore to small gradients which in turn requires the step size to be rather large, possibly leading to divergence of the algorithm.
 
 \section{ADMM Splitting}
 \label{sec:last-layer_splitting}
 
-The problems of gradient descent are tackled by using splitting based optimization algorithms \cites{carreira2014distributed,taylor2016training} which show promising results with regard to stability and convergence rate. By splitting the loss function at the network output and introducing constraints we can reformulate problem~\ref{eq:basis} as
+The problems of gradient descent are tackled by using splitting based optimization algorithms \cites{carreira2014distributed}{taylor2016training} which show promising results with regard to stability and convergence rate. By splitting the composite function and introducing constraints we can reformulate problem~\ref{eq:basis} as
 
 \begin{equation}
 	\begin{aligned}
-		& \underset{\{W_j\},z}{\text{minimize}}
+		& \underset{u,z}{\text{minimize}}
 		&& L(z) \\
 		& \text{subject to}
-		&& z = f(\{W_j\}).
+		&& z = f(u).
 	\end{aligned}
 	\label{eq:last-layer_splitting_problem}
 \end{equation}
@@ -107,23 +115,23 @@ The augmented Lagrangian of this equality constrained problem is
 
 \begin{equation}
 	\begin{aligned}
-		\mathcal{L}(\{W_j\}, z, \lambda)
-		&= L(z) + \inner{\lambda}{f(\{W_j\})-z} + \frac{\rho}{2} \| f(\{W_j\})-z \|^2 \\
-		&= L(z) + \frac{\rho}{2} \| f(\{W_j\}) - z + \frac{\lambda}{\rho} \|^2 - \frac{1}{2 \rho} \| \lambda \|^2.
+		\mathcal{L}(u, z, \lambda)
+		&= L(z) + \inner{\lambda}{f(u)-z} + \frac{\rho}{2} \| f(u)-z \|^2 \\
+		&= L(z) + \frac{\rho}{2} \| f(u) - z + \frac{1}{\rho} \lambda \|^2 - \frac{1}{2 \rho} \| \lambda \|^2.
 	\end{aligned}
 \end{equation}
 
-Note that by adding a regularizer $R(\{W_j\}) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem~\ref{eq:last-layer_splitting_problem} yields
+Note that by adding a regularizer $R(u) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem~\ref{eq:last-layer_splitting_problem} yields
 
 \begin{equation}
 	\begin{aligned}
-		\{W_j\}^{k+1} &:= \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^k, \lambda^k) \\
-		&:= \underset{\{W_j\}}{\text{arg min }} \frac{\rho}{2} \| f(\{W_j\}) - z^k + \frac{1}{\rho} \lambda^k \|^2 \\
+		u^{k+1} &:= \underset{u}{\text{arg min }} \mathcal{L}(u, z^k, \lambda^k) \\
+		&:= \underset{u}{\text{arg min }} \frac{\rho}{2} \| f(u) - z^k + \frac{1}{\rho} \lambda^k \|^2 \\
 	
-		z^{k+1} &:= \underset{z}{\text{arg min }} \mathcal{L}(\{W_j\}^{k+1}, z, \lambda^k) \\
-		&:= \underset{z}{\text{arg min }} L(z) + \frac{\rho}{2} \| f(\{W_j\}^{k+1}) - z + \frac{1}{\rho} \lambda^k \|^2 \\
+		z^{k+1} &:= \underset{z}{\text{arg min }} \mathcal{L}(u^{k+1}, z, \lambda^k) \\
+		&:= \underset{z}{\text{arg min }} L(z) + \frac{\rho}{2} \| f(u^{k+1}) - z + \frac{1}{\rho} \lambda^k \|^2 \\
 		
-		\lambda^{k+1} &:= \lambda^k + \rho (f(\{W_j\}^{k+1})-z^{k+1}).
+		\lambda^{k+1} &:= \lambda^k + \rho (f(u^{k+1})-z^{k+1}).
 	\end{aligned}
 \end{equation}
 
@@ -131,91 +139,91 @@ The gradients of the two primal problems can be written as
 
 \begin{equation}
 	\begin{aligned}
-		\nabla_{W_j} \mathcal{L} &= \rho \mathrm{J_f}(\{W_j\})^T (f(\{W_j\}) - z^k + \frac{1}{\rho} \lambda^k) \\
-		\nabla_z \mathcal{L} &= \nabla L(z) - \lambda^k - \rho (f(\{W_j\}^k) - z).
+		\nabla_{W_j} \mathcal{L} &= \rho \mathrm{J_f}(u)^T (f(u) - z^k + \frac{1}{\rho} \lambda^k) \\
+		\nabla_z \mathcal{L} &= \nabla L(z) - \lambda^k - \rho (f(u^k) - z).
 	\end{aligned}
 \end{equation}
 
-We denote the $\{W_j\}$ problem as primal 1, the $z$ problem as primal 2 and the $\lambda$ problem as dual. Convergence of ADMM in the non-convex setting is shown in \cite{hong2016convergence}. In our experiments, we solve primal 1 inexactly, for example by doing few gradient descent steps.
+We denote the $u$ problem as primal 1, the $z$ problem as primal 2 and the $\lambda$ problem as dual. Convergence of ADMM in the non-convex setting is shown in \cite{hong2016convergence}. In our experiments, we solve primal 1 inexactly, for example by doing few gradient descent steps.
 
-\subsection{Majorization-Minimization}
+\subsection{Majorization-Minimization by Linearized Outer Function}
 
-Interestingly, this formulation is similar to the minimization of a non-convex majorizing function. Here, the composite function $E(x) = L(f(x))$ is approximated in each iteration by a non-convex majorizer shown in equation~\ref{eq:majorizer}.
+Interestingly, this formulation is similar to the minimization of a non-convex majorizing function. Here, in each iteration the composite function $E(u) = L(f(u))$ is approximated by a non-convex majorizer shown in equation~\ref{eq:majorizer}.
 
 \begin{equation}
 	E_{u^k}(u) = L(f(u^k))
 	+ \inner{\nabla L(f(u^k))}{f(u)-f(u^k)}
-	+ R(u) + \frac{1}{2 \tau} \|u - u^k \|^2
+	+ \frac{1}{2 \tau} \|u - u^k \|^2
 	\label{eq:majorizer}
 \end{equation}
 
-This majorizer is motivated by linearizing the outer function of the composite mapping. By assuming feasibility of the constraints of problem \ref{eq:last-layer_splitting_problem} $f(\{W_j\}) = z$, we get from the optimality condition of primal 2 $\nabla = \lambda^k$. Inserting this in primal 1 update gives raise to the majorizer formulation in equation~\ref{eq:majorizer}. In \cite{geiping2018composite} the majorization formulation is generalized by using the Bregman distance function.
+This majorizer is motivated by linearizing the outer function of the composite mapping. By assuming feasibility of the constraints of problem \ref{eq:last-layer_splitting_problem} $f(u) = z$, we get from the optimality condition of primal 2 $\nabla L(z) = \lambda^k$. Inserting this in primal 1 update gives raise to the majorizer formulation in equation~\ref{eq:majorizer}. In \cite{geiping2018composite} the majorization formulation is generalized by using the Bregman distance function.
 
-\subsection{l2 loss}
+\subsection{Squared l2 Loss}
 
-Important to note is that in the case of the squared l2 loss, for a choice of $\rho=1$ the algorithm is equivalent to gradient descent. Considering an iteration $k$, the first order necessary optimality condition for $z^{k+1} = \text{arg min } \mathcal{L}(\{W_j\}^{k+1}, z, \lambda^k)$ holds. This gives, by setting the gradient to zero, $z^{k+1} - \lambda^k - y = \rho(f(\{W_j\}^{k+1}) - z^{k+1})$. The dual can be written as $\lambda^{k+1} - \lambda^k = \rho(f(\{W_j\})^{k+1} - z^{k+1})$. Therefore, in each iteration it holds that $y = z^{k+1} - \lambda^{k+1}$. Considering the next iteration $k+1$ and by setting $\rho=1$, the primal 1 problem can be written as 
+Important to note is that in the case of the squared l2 loss, for a choice of $\rho=1$ the algorithm is equivalent to gradient descent. Considering an iteration $k$, the first order necessary optimality condition for $z^{k+1} = \text{arg min } \mathcal{L}(u^{k+1}, z, \lambda^k)$ holds. This gives, by setting the gradient to zero, $z^{k+1} - \lambda^k - y = \rho(f(u^{k+1}) - z^{k+1})$. The dual can be written as $\lambda^{k+1} - \lambda^k = \rho(f(u)^{k+1} - z^{k+1})$. Therefore, in each iteration it holds that $y = z^{k+1} - \lambda^{k+1}$. Considering the next iteration $k+1$ and by setting $\rho=1$, the primal 1 problem can be written as 
 
 \begin{equation}
-	\{W_j\}^{k+1} = \underset{\{W_j\}}{\text{arg min }} \mathcal{L}(\{W_j\}, z^k, \lambda^k)
-	= \frac{1}{2} \|f(\{W_j\}) - y\|^2 = L(f(\{W_j\})).
+	u^{k+1} = \underset{u}{\text{arg min }} \mathcal{L}(u, z^k, \lambda^k)
+	= \frac{1}{2} \|f(u) - y\|^2 = L(f(u)).
 \end{equation}
 
 This holds for all iterations except for $k=1$.
 
-\subsubsection{Batched Primal Updates}
+\subsection{Batched Primal Updates}
 
-The primal 1 problem can be minimized using various non-linear solvers. However, in practice the training data is too large for a full batch approach. For example, using Levenberg-Marquardt would include solving a system of linear equations involving a coefficient matrix $\mathrm{J}_f^T \mathrm{J}_f$ of size $Nd \times Nd$ with $d$ being the input data dimension. Therefore, we use a batched approach where in each iteration $k$ the primal update for the network weights is done in a batched fashion. The primal 2 and dual updates are done full batch. In the case of the squared l2 loss both can be solved in closed form. The batched splitting algorithm is shown in algorithm~\ref{alg:sb}.
+The primal 1 problem can be minimized using various solvers for non-linear optimization problems. However, in practice the training data is too large for a full batch approach. For example, in the case of a squared l2 loss using Gauss-Newton would include solving a system of linear equations involving a coefficient matrix $J^T J$ of size $Nc \times Nc$ with $c$ being the output dimension and $N$ the number of samples. Therefore, we use a batched approach where in each iteration $k$ the primal update for the model parameters is done in a batched fashion. The primal 2 and dual updates are done full batch. In the case of the squared l2 loss both can be solved in closed form. The batched splitting algorithm is shown in algorithm~\ref{alg:sb}.
 
 \begin{algorithm}
-	\caption{Batched last-layer splitting}
+	\caption{Batched splitting}
 	\label{alg:sb}
 	\begin{algorithmic}[1]
 		\State $x \gets$ Inputs
 		\State $y \gets$ Targets
-		\State Initialize $\{W_j\}^0, z^0, \lambda^0$
+		\State Initialize $u^0, z^0, \lambda^0$
 		\State Choose $\rho \in \R$
 		\For{$k = 0,1,2,\dots$}
 			\State $x_k, y_k \gets$ \Call{nextbatch}{$x, y, k$}
-			\State $\{W_j\}^{k+1} \gets$ \Call{primal1}{$x_k,y_k$}
-			\State $z^{k+1} \gets$ \Call{primal2}{$x,y$}
-			\State $\lambda^{k+1} \gets \lambda^k + \rho (f(\{W_j\}^{k+1};x)-z^{k+1})$
+			\State $u^{k+1} \gets$ \Call{primal1}{$z^k, \lambda^k, x_k,y_k$} \Comment{Batched}
+			\State $z^{k+1} \gets$ \Call{primal2}{$u^{k+1}, \lambda^k, x,y$} \Comment{Full Batch}
+			\State $\lambda^{k+1} \gets \lambda^k + \rho (f(u^{k+1};x)-z^{k+1})$ \Comment{Full Batch}
 		\EndFor
 	\end{algorithmic}
 \end{algorithm}
 
-\section{Levenberg-Marquardt}
+\section{Majorization-Minimization by Linearized Inner Function}
 
-Inner linearization.
+\todo{Majorizer?}
 
-The Levenberg-Marquardt algorithm can be used to iteratively solve the non-linear least squares problem shown in \ref{eq:basis_l2}. Here, in each iteration $f$ is linearly approximated by $f(\{W_j\}^k+\delta;x) \approx f(\{W_j\}^k;x) + \mathrm{J}\delta$ where $\mathrm{J}$ is the Jacobian at $\{W_j\}^k$. In each iteration the linearized problem shown in equation~\ref{eq:linearized_ls} is solved for $\delta$.
+In comparison to equation~\ref{eq:majorizer}, it is also possible to linearize the inner function $f$ of the composite mapping $E(u) = L(f(u))$. With the additional penalty function on $u$, this can be written as
 
 \begin{equation}
-	E(\{W_j\}^k+\delta) \approx \frac{1}{2} \|f(\{W_j\}^k;x) + \mathrm{J}\delta - y\|^2
+	E_{u^k}(u) = L(f(u^k) + J(u^k)(u-u^k)) + \frac{1}{2 \tau} \| u - u^k \|^2.	\label{eq:composite_inner_linearization}
+\end{equation}
+
+It is easy to see that this generalizes the Levenberg-Marquardt (LM) algorithm in the case of a squared error function $L$. Further properties and convergence results of this generalization can be found in \cite{lewis2016proximal}. In the following we focus on the LM algorithm. With the squared error loss $L(y_p;y) = \frac{1}{2} \|y_p - y\|^2$ equation~\ref{eq:composite_inner_linearization} can be written as
+
+\begin{equation}
+	E_{u^k}(u) = \frac{1}{2} \|f(u^k) + J(u^k)(u - u^k) - y\|^2 + \frac{1}{2 \tau} \| u - u^k \|^2.
 	\label{eq:linearized_ls}
 \end{equation}
 
-The normal equations yield
+The normal equations yield the LM update equations shown in equation~\ref{eq:LM_update}.
 
 \begin{equation}
-	(\mathrm{J}^T \mathrm{J}) \delta = \mathrm{J}^T(y - f(\{W_j\}^k;x)).
+	(J^T J + \frac{1}{\tau} I) (u - u^k) = J^T(y - f(u^k))
+	\label{eq:LM_update}
 \end{equation}
 
-By adding a damping term to the coefficient matrix on the left-hand side (which is equal to adding a regularizer term of the weights to the original problem) we get the Levenberg-Marquardt algorithm shown in equation~\ref{eq:levenberg-marquardt}.
-
-\begin{equation}
-	(\mathrm{J}^T \mathrm{J} + \lambda I) \delta = \mathrm{J}^T(y - f(\{W_j\}^k;x))
-	\label{eq:levenberg-marquardt}
-\end{equation}
-
-The parameters are updated in each step according to $\{W_j\}^{k+1} = \{W_j\}^k + \delta$. To find a suitable damping parameter $\lambda$ trust-region or line search methods can be used.
-
-\subsubsection{Batched Levenberg-Marquardt}
-
-Levenberg-Marquardt can only applied efficiently when the dimension of the mapping $f$ is relatively small. However, in our case we have large training data sets, which results in very large Jacobians. Similar to the splitting algorithm used, we use a batched variant of the Levenberg-Marquardt algorithm where only a randomly sampled subset of the training data is used to calculate the Jacobian\todo{Convergence proof?}.
+To find a suitable damping parameter $\tau$ trust-region or line search methods can be used. Levenberg-Marquardt can only applied efficiently when the dimension of the mapping $f$ is relatively small. However, in our case we have large training data sets, which results in very large Jacobians. Similar to the splitting algorithm used, we use a batched variant of the Levenberg-Marquardt algorithm where only a randomly sampled subset of the training data is used to calculate the Jacobian.
 
 \section{Experiments}
 
-For the experiments the well known MNIST data set is used. For efficient matrix calculus and utilization of GPUs the \textit{pytorch} library is used. Good hyperparameters for the respective algorithms are empirically determined.
+For the experiments, we solve a simple classification problem using the MNIST data set. The error function $L$ is the squared l2 loss. The inner function $f$ is a simple 3-layer convolutional neural network. For efficient matrix calculus and utilization of GPUs the \textit{pytorch} library is used. Good hyperparameters for the respective algorithms are empirically determined. We compare batched gradient descent (bGD), batched admm splitting with a single gradient descent step as primal 1 update (sbGD) and batched Levenberg-Marquardt (bLM). For the comparisons, it is sufficient to train one epoch.
+
+\subsection{Variable Penalty Weighting $\rho$}
+
+\subsection{Variable Batch Size}
 
 % ==============================================================================
 
