@@ -26,6 +26,9 @@ def train_splitting(trainloader, optimizer, params=None):
     inputs, labels = iter(trainloader).next()
     inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
 
+    # For autoencoder:
+    # labels = inputs.view(inputs.size(0), -1)  # TODO: labels
+
     pb.init(global_config.cfg.epochs, global_config.cfg.training_batch_size, inputs.size(0),
             dict(dataloss='Data loss', lagrangian='Lagrangian'))
 
@@ -48,6 +51,16 @@ def train_splitting(trainloader, optimizer, params=None):
     return data_loss, lagrangian, correctly_classified
 
 
+import deepsplitting.utils.misc as misc
+
+
+def aetest(net, inputs, n=8 * 4):
+    out = net(inputs[0:n]).view(inputs[0:n].size())
+
+    misc.imshow_grid(inputs[0:n], 'input', save=True)
+    misc.imshow_grid(out[0:n].detach(), 'output', save=True)
+
+
 def train_LM_GD(trainloader, optimizer, params=None):
     data_loss = []
     correctly_classified = []
@@ -57,6 +70,9 @@ def train_LM_GD(trainloader, optimizer, params=None):
     # Full batch. Batching is done by the optimizer.
     inputs, labels = iter(trainloader).next()
     inputs, labels = inputs.to(global_config.cfg.device), labels.to(global_config.cfg.device)
+
+    # For autoencoder:
+    # labels = inputs.view(inputs.size(0), -1)  # TODO: labels
 
     pb.init(global_config.cfg.epochs, global_config.cfg.training_batch_size, inputs.size(0),
             dict(dataloss='Data loss'))
@@ -75,5 +91,7 @@ def train_LM_GD(trainloader, optimizer, params=None):
             logging.info("{}: [{}/{}]".format(type(optimizer).__module__, epoch + 1, global_config.cfg.epochs))
 
     pb.bar.finish()
+
+    # aetest(optimizer.net, inputs)
 
     return data_loss, correctly_classified

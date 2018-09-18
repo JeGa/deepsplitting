@@ -6,8 +6,13 @@ import deepsplitting.data.cifar10
 import deepsplitting.data.mnist
 import deepsplitting.losses.mse
 import deepsplitting.networks.simple
+import deepsplitting.networks.autoencoder
 import deepsplitting.utils
 import deepsplitting.utils.global_config as global_config
+
+
+def to_type(net):
+    return net.type(global_config.cfg.datatype)
 
 
 def get_activation(activation_type):
@@ -130,12 +135,28 @@ def cnn_mnist(loss_type, activation_type):
 
     activation = get_activation(activation_type)
 
-    net = deepsplitting.networks.simple.SimpleConvNet_mnist(activation, loss).double()
+    net = to_type(deepsplitting.networks.simple.SimpleConvNet_mnist(activation, loss))
 
     net.to(global_config.cfg.device)
 
     trainloader, testloader, training_batch_size, test_batch_size, classes = deepsplitting.data.mnist.load_MNIST(
         training_samples=global_config.cfg.training_samples, target_transform=tf, fullbatch=True,
+        training_batch_size=global_config.cfg.training_batch_size, test_batch_size=1)
+
+    return net, trainloader, training_batch_size, classes
+
+
+def cnn_autoencoder_mnist(loss_type, activation_type):
+    loss = get_loss(loss_type)
+
+    activation = get_activation(activation_type)
+
+    net = to_type(deepsplitting.networks.autoencoder.Autoencoder_mnist(activation, loss))
+
+    net.to(global_config.cfg.device)
+
+    trainloader, testloader, training_batch_size, test_batch_size, classes = deepsplitting.data.mnist.load_MNIST(
+        training_samples=global_config.cfg.training_samples, fullbatch=True,
         training_batch_size=global_config.cfg.training_batch_size, test_batch_size=1)
 
     return net, trainloader, training_batch_size, classes
