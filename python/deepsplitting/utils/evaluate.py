@@ -49,6 +49,14 @@ def save_plot(name, plot=1):
 
 
 def add_to_plot(file, loss_key, plot=1):
+    def clear():
+        if hasattr(add_to_plot, 'every'):
+            del add_to_plot.every
+        if hasattr(add_to_plot, 'text_y'):
+            del add_to_plot.text_y
+
+    add_to_plot.clear = clear
+
     yaml_dict = load_yaml(file)
     losses = yaml_dict[Section.DATA.value]['Data'][loss_key]
 
@@ -65,13 +73,15 @@ def add_to_plot(file, loss_key, plot=1):
     for key, value in yaml_dict[Section.PARAMS.value]['Parameters'].items():
         params_text += os.linesep + "{}={}".format(key, value)
 
-    global_config_text = "Config: {} {} {}s".format(optimizer_key, loss_key, yaml_dict[Section.TIME.value]['Time'])
-    for i in global_config.cfg.csv_format():
-        global_config_text += os.linesep + i
+    global_config_text = "Config: {} {} {}s".format(optimizer_key, loss_key,
+                                                    int(float(yaml_dict[Section.TIME.value]['Time'])))
+
+    for key, value in yaml_dict[Section.GLOBALCFG.value]['Global_config'].items():
+        global_config_text += os.linesep + "{} = {}".format(key, str(value))
 
     plt.figure(plot)
 
-    plt.plot(losses, label=label, linewidth=0.7,
+    plt.plot(losses, label=label, linewidth=0.4,
              marker=next(plot_properties.marker), markevery=add_to_plot.every, markerfacecolor='none')
 
     plt.text(0.05, add_to_plot.text_y, global_config_text,
@@ -89,8 +99,6 @@ def add_to_plot(file, loss_key, plot=1):
     plt.ylabel('Objective')
 
     plt.show()
-
-    plot_properties.hyperparams_y -= 0.1
 
     return optimizer_key
 
@@ -183,6 +191,9 @@ class Notebook:
 
         self.current_keys = []
 
+        clear_plot()
+        add_to_plot.clear()
+
     def create_widgets(self, file_list):
         control_label = ipywidgets.Label(value='Select file and add the result data shown on the right to the plot.')
 
@@ -223,6 +234,8 @@ class Notebook:
         def clear_btn_click(_):
             clear_plot()
             self.current_keys = []
+
+            add_to_plot.clear()
 
         def save_btn_click(_):
             name = ''
