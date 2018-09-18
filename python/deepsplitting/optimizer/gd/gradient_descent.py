@@ -1,10 +1,9 @@
-import torch
 import logging
-import math
 
 from deepsplitting.optimizer.base import BaseOptimizer
 import deepsplitting.utils.global_config as global_config
 import deepsplitting.utils.testrun as testrun
+import deepsplitting.utils.global_progressbar as gp
 
 
 class Optimizer(BaseOptimizer):
@@ -32,7 +31,7 @@ class Optimizer_batched(BaseOptimizer):
     This version does the batching itself. It assumes as input the full batch samples.
     """
 
-    def __init__(self, net, hyperparams):
+    def __init__(self, net, N, hyperparams):
         super(Optimizer_batched, self).__init__(net, hyperparams)
 
         self.iteration = 1
@@ -45,9 +44,7 @@ class Optimizer_batched(BaseOptimizer):
     def step(self, inputs, labels):
         batch_size = global_config.cfg.training_batch_size
 
-        torch.manual_seed(global_config.cfg.seed)
-        indices = torch.randperm(inputs.size(0))
-        max_steps = int(math.ceil(len(indices) / batch_size))
+        indices, _, max_steps = self.fullbatch_subindex_init(batch_size, 0, inputs.size(0))
 
         loss = []
         correctly_classified = []
@@ -67,12 +64,18 @@ class Optimizer_batched(BaseOptimizer):
             if correct is not None:
                 correctly_classified.append(correct)
 
+            loss.append(current_loss)
+
             self.iteration += 1
 
-        return loss, correct
+            gp.bar.next_batch(dict(dataloss=current_loss))
+
+        return loss, correctly_classified
 
     def gd_step(self, inputs, labels):
         loss = self.net.loss(inputs, labels)
+
+        self.zero_grad()
         loss.backward()
 
         for p in self.net.parameters():

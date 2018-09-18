@@ -1,9 +1,9 @@
 from deepsplitting.optimizer.base import BaseOptimizer
-from deepsplitting.optimizer.base import Hyperparams
+import deepsplitting.utils.global_progressbar as gp
 
 
 class Optimizer(BaseOptimizer):
-    def __init__(self, net, hyperparams):
+    def __init__(self, net, N, hyperparams):
         super(Optimizer, self).__init__(net, hyperparams)
 
     def step(self, inputs, labels):
@@ -17,7 +17,7 @@ class Optimizer(BaseOptimizer):
 
         self._armijo_step(params, grads, step_direction, inputs, labels)
 
-        return loss.item(), self.net.loss(inputs, labels).item()
+        return [loss.item()], [self.net.loss(inputs, labels).item()]
 
     def _armijo_step(self, params, grads, step_direction, inputs, labels):
         current_loss = self.net.loss(inputs, labels)
@@ -31,6 +31,8 @@ class Optimizer(BaseOptimizer):
                 break
 
             k = k + 1
+
+        gp.bar.next_batch(dict(dataloss=current_loss))
 
     def _check_armijo(self, sigma, params, grads, step_direction, inputs, labels, current_loss):
         current_params = self.save_params()
