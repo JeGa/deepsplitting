@@ -53,8 +53,11 @@ class Optimizer_batched(Optimizer):
                 subindex = None
 
             self.primal2(inputs, labels, index, subindex)
-            self.primal1(inputs, labels)
-            self.dual(inputs)
+
+            # This is done fullbatch.
+            if i % self.hyperparams.primal2_batches == 0:
+                self.primal1(inputs, labels)
+                self.dual(inputs)
 
             data_loss_new, lagrangian_new = self.eval(inputs, labels)
 
@@ -69,8 +72,7 @@ class Optimizer_batched(Optimizer):
 
             lagrangian_old = lagrangian_new
 
-            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
-                                               global_config.cfg.classes)
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels, global_config.cfg.classes)
             if correct is not None:
                 correctly_classified.append(correct)
 
