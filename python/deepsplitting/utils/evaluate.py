@@ -84,14 +84,17 @@ def add_to_plot(file, loss_key, plot=1, verbose=True):
         plt.text(0.55, add_to_plot.text_y, params_text,
                  horizontalalignment='left', verticalalignment='top', transform=plt.gcf().transFigure)
 
-        add_to_plot.every += math.ceil(0.1 * add_to_plot.every)
         add_to_plot.text_y -= 0.55
 
+    add_to_plot.every += math.ceil(0.1 * add_to_plot.every)
     plt.subplots_adjust(bottom=0.15)
 
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective')
+
+    plt.minorticks_on()
+    plt.grid(which='major', linestyle='-', linewidth=0.1)
 
     plt.show()
 
