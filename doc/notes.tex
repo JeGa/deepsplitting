@@ -10,6 +10,7 @@
 \usepackage{tikz}
 \usepackage{amsmath,epsfig,amssymb,amsbsy}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
@@ -25,7 +26,7 @@
 \addbibresource{references.bib}
 
 \usepackage[
-	a4paper, top=2.5cm, left=2cm, right=2.5cm
+	a4paper, top=2.5cm, left=2.3cm, right=2.3cm
 ]{geometry}
 
 \usepackage{enumitem}
@@ -69,7 +70,7 @@ Many complex tasks in engineering and science can be solved by learning a suitab
 
 % Important for comparisons are convergence properties and stability as well as the possibility to parallelize the algorithms.
 
-\section{Objective Function}
+\section{Objective function}
 
 In this work, the aim is to solve a supervised regression or classification problem involving a highly nested objective function. More specifically, a mapping $f(x)$ from the inputs $x$ to the corresponding outputs $y$ based on $N$ training samples $(x_n, y_n)$ should be learned. The problem can be written as
 
@@ -82,9 +83,9 @@ In this work, the aim is to solve a supervised regression or classification prob
 	\label{eq:basis}
 \end{equation}
 
-with some suitable error measure $L_i(y_p;y)$, model parametrization $\{W_j\}$ and optional regularizer $R$. An example for an error measure is the squared l2 loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ is the model prediction and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x)))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. To keep the formulation clear, the biases are integrated into the weight matrices. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$. Note that the sum over all samples can also be omitted by reformulating the involved functions to act on all training data simultaneously as shown on the right-hand side of equation~\ref{eq:basis}. In the following, we stack all input samples into the matrix $x$ where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. For simplicity, in the following we define $u = \{W_j\}$ and write $f(u)$ and $L(f(u))$, omitting the inputs $x$ and targets $y$. Additionally, we assume $R(u) = 0$, since the regularizer does not influence the comparisons of the different algorithms.
+with some suitable error measure $L_i(y_p;y)$, model parametrization $\{W_j\}$ and optional regularizer $R$. An example for an error measure is the squared l2 loss $L(y_p;y) = \frac{1}{2} \| y_p - y \|^2_2$ where $y_p$ is the model prediction and $y$ the ground truth data. The function $f(\{W_j\};x) = W_{K+1}h(W_Kh(\dots h(W_1x)))$ is a nested K-layer mapping as it is usual in neural networks where $W_j$ are the weight matrices $W_1,\dots,W_{K+1}$ which do not need to have the same size. To keep the formulation clear, the biases are integrated into the weight matrices. The nonlinear activation function $h(x)$ is applied element-wise and can also be non-differential. Examples for activation functions are the sigmoid function $h(x) = 1/(1 + e^{-x})$ or the ReLU $h(x) = \mathrm{max}(0, x)$. Note that the sum over all samples can also be omitted by reformulating the involved functions to act on all training data simultaneously as shown on the right-hand side of equation~\ref{eq:basis}. In the following, we stack all input samples into the matrix $x$, where each column is one sample point. Similarly, the target variables are stacked into the matrix $y$. The error function $L$ now operates on matrices. For simplicity, in the following we define $u = \{W_j\}$ and write $f(u)$ and $L(f(u))$, omitting the inputs $x$ and targets $y$. Additionally, we assume $R(u) = 0$, since the regularizer does not influence the comparisons of the different algorithms.
 
-\section{Stochastic Gradient Descent}
+\section{Stochastic gradient descent}
 
 The standard way of training neural networks is stochastic gradient descent. The gradient descent algorithm is used to find locally optimal parameters $u$. Here, in each step the gradient is calculated using the backpropagation algorithm and a fixed, randomly chosen number of samples from the training data. The network parameters are then updated using a fixed or diminishing stepsize. Note that in the case of stochastic gradient descent, using methods like Armijo linesearch does result in unstable behavior. For the convergence of this method the gradient needs to be Lipschitz continuous. The (deterministic) gradient descent scheme can be derived by approximating the objective function at each iteration using the convex majorizer
 
@@ -94,9 +95,9 @@ The standard way of training neural networks is stochastic gradient descent. The
 \end{equation}
 
 
-While this method works often well in practice, it has only linear convergence and the tendency to get stuck at local minima, in comparison to more sophisticated majorization approaches. Additionally, finding a suitable step size often involves some heuristics and validation methods. It is well known that backpropagation leads to the vanishing gradient problem and therefore to small gradients which in turn requires the step size to be rather large, possibly leading to divergence of the algorithm.
+While this method works often well in practice, it has only linear convergence and the tendency to get stuck in local minima, in comparison to more sophisticated non-convex majorization approaches. Additionally, finding a suitable step size often involves some heuristics and validation methods. It is well known that backpropagation leads to the vanishing gradient problem and therefore to small gradients which in turn requires the step size to be rather large, possibly leading to divergence of the algorithm.
 
-\section{ADMM Splitting}
+\section{ADMM splitting}
 \label{sec:last-layer_splitting}
 
 The problems of gradient descent are tackled by using splitting based optimization algorithms \cites{carreira2014distributed}{taylor2016training} which show promising results with regard to stability and convergence rate. By splitting the composite function and introducing constraints we can reformulate problem~\ref{eq:basis} as
@@ -111,7 +112,7 @@ The problems of gradient descent are tackled by using splitting based optimizati
 	\label{eq:last-layer_splitting_problem}
 \end{equation}
 
-The augmented Lagrangian of this equality constrained problem is
+The augmented Lagrangian of this equality constrained problem can be written as
 
 \begin{equation}
 	\begin{aligned}
@@ -121,7 +122,7 @@ The augmented Lagrangian of this equality constrained problem is
 	\end{aligned}
 \end{equation}
 
-Note that by adding a regularizer $R(u) = (1/2) \sum_{j} \| W_j \|^2$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem~\ref{eq:last-layer_splitting_problem} yields
+Note that by adding a regularizer $R(u) = (1/2) \sum_{j} \| W_j \|^2_F$ for the weights we get the standard ADMM formulation. Applying dual ascent to problem~\ref{eq:last-layer_splitting_problem} yields
 
 \begin{equation}
 	\begin{aligned}
@@ -146,9 +147,9 @@ The gradients of the two primal problems can be written as
 
 We denote the $u$ problem as primal 1, the $z$ problem as primal 2 and the $\lambda$ problem as dual. Convergence of ADMM in the non-convex setting is shown in \cite{hong2016convergence}. In our experiments, we solve primal 1 inexactly, for example by doing few gradient descent steps.
 
-\subsection{Majorization-Minimization by Linearized Outer Function}
+\subsection{Linearizing the outer function}
 
-Interestingly, this formulation is similar to the minimization of a non-convex majorizing function. Here, in each iteration the composite function $E(u) = L(f(u))$ is approximated by a non-convex majorizer shown in equation~\ref{eq:majorizer}.
+Interestingly, this formulation is similar to the minimization of a non-convex majorization function. Here, in each iteration the composite function $E(u) = L(f(u))$ is approximated by a non-convex majorizer shown in equation~\ref{eq:majorizer}.
 
 \begin{equation}
 	E_{u^k}(u) = L(f(u^k))
@@ -157,22 +158,22 @@ Interestingly, this formulation is similar to the minimization of a non-convex m
 	\label{eq:majorizer}
 \end{equation}
 
-This majorizer is motivated by linearizing the outer function of the composite mapping. By assuming feasibility of the constraints of problem \ref{eq:last-layer_splitting_problem} $f(u) = z$, we get from the optimality condition of primal 2 $\nabla L(z) = \lambda^k$. Inserting this in primal 1 update gives raise to the majorizer formulation in equation~\ref{eq:majorizer}. In \cite{geiping2018composite} the majorization formulation is generalized by using the Bregman distance function.
+This majorizer is motivated by linearizing the outer function of the composite mapping. By assuming feasibility of the constraints of problem \ref{eq:last-layer_splitting_problem} $f(u) = z$, we get from the optimality condition of primal 2 $\nabla L(z) = \lambda^k$. Inserting this into the primal 1 update gives raise to the majorizer formulation in equation~\ref{eq:majorizer}. In \cite{geiping2018composite} the majorization formulation is generalized by using the Bregman distance function.
 
-\subsection{Squared l2 Loss}
+\subsection{Squared l2 loss}
 
-Important to note is that in the case of the squared l2 loss, for a choice of $\rho=1$ the algorithm is equivalent to gradient descent. Considering an iteration $k$, the first order necessary optimality condition for $z^{k+1} = \text{arg min } \mathcal{L}(u^{k+1}, z, \lambda^k)$ holds. This gives, by setting the gradient to zero, $z^{k+1} - \lambda^k - y = \rho(f(u^{k+1}) - z^{k+1})$. The dual can be written as $\lambda^{k+1} - \lambda^k = \rho(f(u)^{k+1} - z^{k+1})$. Therefore, in each iteration it holds that $y = z^{k+1} - \lambda^{k+1}$. Considering the next iteration $k+1$ and by setting $\rho=1$, the primal 1 problem can be written as 
+Important to note is that in the case of the squared l2 loss, for a choice of $\rho=1$ the primal 1 update step is equivalent to the update step of the original unconstrained problem. Considering an iteration $k$, the first order necessary optimality condition for the primal 2 problem holds. This gives, by setting the gradient to zero, $z^{k+1} - \lambda^k - y = \rho(f(u^{k+1}) - z^{k+1})$. The dual can be written as $\lambda^{k+1} - \lambda^k = \rho(f(u)^{k+1} - z^{k+1})$. Therefore, in each iteration it holds that $y = z^{k+1} - \lambda^{k+1}$. Considering the next iteration $k+1$ and by setting $\rho=1$, the primal 1 problem can be written as 
 
 \begin{equation}
-	u^{k+1} = \underset{u}{\text{arg min }} \mathcal{L}(u, z^k, \lambda^k)
-	= \frac{1}{2} \|f(u) - y\|^2 = L(f(u)).
+	u^{k+1} = \underset{u}{\text{arg min }} \left\{ \mathcal{L}(u, z^k, \lambda^k)
+	= \frac{1}{2} \|f(u) - y\|^2 = L(f(u)) \right\}.
 \end{equation}
 
 This holds for all iterations except for $k=1$.
 
-\subsection{Batched Primal Updates}
+\subsection{Batched primal updates}
 
-The primal 1 problem can be minimized using various solvers for non-linear optimization problems. However, in practice the training data is too large for a full batch approach. For example, in the case of a squared l2 loss using Gauss-Newton would include solving a system of linear equations involving a coefficient matrix $J^T J$ of size $Nc \times Nc$ with $c$ being the output dimension and $N$ the number of samples. Therefore, we use a batched approach where in each iteration $k$ the primal update for the model parameters is done in a batched fashion. The primal 2 and dual updates are done full batch. In the case of the squared l2 loss both can be solved in closed form. The batched splitting algorithm is shown in algorithm~\ref{alg:sb}.
+The primal 1 problem can be minimized using various solvers for non-linear problems. However, in practice the training data is too large for a full batch approach. For example, in the case of a squared l2 loss using the Gauss-Newton method would include solving a system of linear equations involving a coefficient matrix $J^T J$ of size $Nc \times Nc$ with $c$ being the output dimension and $N$ the number of samples. Therefore, we use a batched approach where in each iteration the primal 1 update for the model parameters is done in a batched fashion. The primal 2 and dual updates are done full batch. In the case of the squared l2 loss both can be solved in closed form. The batched splitting algorithm is shown in algorithm~\ref{alg:sb}.
 
 \begin{algorithm}
 	\caption{Batched splitting}
@@ -185,17 +186,17 @@ The primal 1 problem can be minimized using various solvers for non-linear optim
 		\For{$k = 0,1,2,\dots$}
 			\State $x_k, y_k \gets$ \Call{nextbatch}{$x, y, k$}
 			\State $u^{k+1} \gets$ \Call{primal1}{$z^k, \lambda^k, x_k,y_k$} \Comment{Batched}
-			\State $z^{k+1} \gets$ \Call{primal2}{$u^{k+1}, \lambda^k, x,y$} \Comment{Full Batch}
-			\State $\lambda^{k+1} \gets \lambda^k + \rho (f(u^{k+1};x)-z^{k+1})$ \Comment{Full Batch}
+			\State $z^{k+1} \gets$ \Call{primal2}{$u^{k+1}, \lambda^k, x,y$} \Comment{Full batch}
+			\State $\lambda^{k+1} \gets \lambda^k + \rho (f(u^{k+1};x)-z^{k+1})$ \Comment{Full batch}
 		\EndFor
 	\end{algorithmic}
 \end{algorithm}
 
-\section{Majorization-Minimization by Linearized Inner Function}
+\section{Linearizing the inner function}
 
 \todo{Majorizer?}
 
-In comparison to equation~\ref{eq:majorizer}, it is also possible to linearize the inner function $f$ of the composite mapping $E(u) = L(f(u))$. With the additional penalty function on $u$, this can be written as
+In comparison to equation~\ref{eq:majorizer}, it is also possible to linearize the inner function $f$ of the composite mapping $E(u) = L(f(u))$. With the additional penalty term on $u$, this can be written as
 
 \begin{equation}
 	E_{u^k}(u) = L(f(u^k) + J(u^k)(u-u^k)) + \frac{1}{2 \tau} \| u - u^k \|^2.	\label{eq:composite_inner_linearization}
@@ -215,15 +216,57 @@ The normal equations yield the LM update equations shown in equation~\ref{eq:LM_
 	\label{eq:LM_update}
 \end{equation}
 
-To find a suitable damping parameter $\tau$ trust-region or line search methods can be used. Levenberg-Marquardt can only applied efficiently when the dimension of the mapping $f$ is relatively small. However, in our case we have large training data sets, which results in very large Jacobians. Similar to the splitting algorithm used, we use a batched variant of the Levenberg-Marquardt algorithm where only a randomly sampled subset of the training data is used to calculate the Jacobian.
+To find a suitable damping parameter $\tau$, trust-region or line search methods can be used. Levenberg-Marquardt can only applied efficiently when the dimension of the mapping $f$ is relatively small. However, in our case we have large training data sets, which results in very large Jacobians. Similar to the splitting algorithm, we use a batched variant of the Levenberg-Marquardt algorithm where a randomly sampled subset of the training data is used to calculate the Jacobian.
 
 \section{Experiments}
 
-For the experiments, we solve a simple classification problem using the MNIST data set. The error function $L$ is the squared l2 loss. The inner function $f$ is a simple 3-layer convolutional neural network. For efficient matrix calculus and utilization of GPUs the \textit{pytorch} library is used. Good hyperparameters for the respective algorithms are empirically determined. We compare batched gradient descent (bGD), batched admm splitting with a single gradient descent step as primal 1 update (sbGD) and batched Levenberg-Marquardt (bLM). For the comparisons, it is sufficient to train one epoch.
+For all experiments, the pytorch deep learning library is used. It allows to efficiently compute the forward passes through the networks and to compute the network gradients using the backpropagation algorithm. The experiments are run on two different data sets. An artificial data set for binary classification where the network is trained with the cross-entropy loss and the MNIST data set where the least squares loss is used.
 
-\subsection{Variable Penalty Weighting $\rho$}
+\subsection{Binary classification with cross-entropy loss}
 
-\subsection{Variable Batch Size}
+In the case of $L$ being the negative log likelihood (also called cross-entropy) loss, it is difficult to solve the primal 2 problem efficiently, since a closed form solution does not exist. Additionally, it is not possible to solve this problem in a batched fashion. To keep the computational requirements low, we use a simple artificial data set for the experiments. We solve a simple, not linearly separable, binary classification problem. The training data set has input dimension two and consists of two interleaved noisy spirals, each spiral belonging to one class. The function $f$ is a three layer fully connected network with 12 hidden units in each layer. The ReLU is used as activation function. Good hyperparameters are empirically determined. For all experiments the same fixed step size is used. Figure \ref{fig:results_spirals} shows the loss over all samples with gradient descent (bGD) and ADMM splitting with a single gradient descent step as primal 1 update (sbGD). In figure \ref{fig:spirals_fullbatch} the results for the full batch version are shown, figure \ref{fig:spirals_batchsize10} shows the batched versions with batch size 10 of the respective algorithms.
+
+\begin{figure}[t]
+	\centering
+	\begin{subfigure}[b]{0.5\textwidth}
+		\includegraphics[width=\textwidth]{images/spirals_fullbatch.pdf}
+		\caption{Full batch}
+		\label{fig:spirals_fullbatch}
+	\end{subfigure}
+	~
+	\begin{subfigure}[b]{0.5\textwidth}
+		\includegraphics[width=\textwidth]{images/spirals_batchsize10.pdf}
+		\caption{Batch size 10}
+		\label{fig:spirals_batchsize10}
+	\end{subfigure}
+	
+	\caption{Both plots show the value of the objective function over all samples at each iteration. The network is trained on an artificial binary classification data set using the cross-entropy loss. All experiments shown in figure \ref{fig:spirals_fullbatch} are run without batching. The experiments in figure \ref{fig:spirals_batchsize10} are run with a batch size of 10 samples. For sbGD10 we used $\rho=10$, for sbGD50 $\rho=50$ and for sbGD100 $\rho=100$.}
+	
+	\label{fig:results_spirals}
+\end{figure}
+
+\subsection{MNIST classification with least squares loss}
+
+Additionally to the binary classification in the case of the cross-entropy loss, we run the experiments on the MNIST data set which is used to classify images of handwritten digits. Here, the error function $L$ is the least squares (also called squared l2) loss. The inner function $f$ is a simple three layer convolutional neural network. Again, the activation function is the ReLU and the hyperparameters are empirically determined. This classification problem can only be solved in reasonable time with batched training. We intentionally use a small batch size in the hope the ADMM splitting behaves more stable than stochastic gradient descent. For the comparisons, it is sufficient to train for one epoch. The stepsize is fixed and the same for all experiments. We compare batched gradient descent (bGD), batched ADMM splitting with a single gradient descent step as primal 1 update (sbGD) and batched Levenberg-Marquardt (bLM). Figure \ref{fig:mnist_batchsize10} shows the results with a batch size of 10 samples and varying $\rho$. For the experiments in figure \ref{fig:mnist_batchsize5} a batch size of 5 samples is used. Both plots show the value of the objective function over all samples at each iteration. In both cases, the convergence of ADMM splitting is worse than stochastic gradient descent. Each sbGD iteration is also much more costly as a simple gradient step. Additionally, there is no implicit regularization effect when using ADMM splitting.
+
+\begin{figure}[t]
+	\centering
+	\begin{subfigure}[b]{0.5\textwidth}
+		\includegraphics[width=\textwidth]{images/mnist_batchsize10.pdf}
+		\caption{Batch size 10}
+		\label{fig:mnist_batchsize10}
+	\end{subfigure}
+	~
+	\begin{subfigure}[b]{0.5\textwidth}
+		\includegraphics[width=\textwidth]{images/mnist_batchsize5.pdf}
+		\caption{Batch size 5}
+		\label{fig:mnist_batchsize5}
+	\end{subfigure}
+
+	\caption{Both plots show the value of the objective function over all samples at each iteration. The network is trained on the MNIST data set using the least squares loss. For figure \ref{fig:mnist_batchsize10} a batch size of 10 samples is used. For sbGD5 we used $\rho=5$, for sbGD10 $\rho=10$. The experiments in figure \ref{fig:mnist_batchsize5} are run with a batch size of 5 samples. For sbGD10 we set $\rho=10$, for sbGD50 $\rho=50$.}
+	
+	\label{fig:results_mnist}
+\end{figure}
 
 % ==============================================================================
 

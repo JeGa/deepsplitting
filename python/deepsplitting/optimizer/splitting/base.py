@@ -56,9 +56,9 @@ class Optimizer(BaseOptimizer):
         lagrangian, data_loss, lagrangian_data_loss, constraint_norm, _ = self.augmented_lagrangian(inputs, labels)
 
         if print:
-            logging.info(
-                "Data loss = {:.8f}, Lagrangian data loss = {:.8f}, constraint norm = {:.8f}, Lagrangian = {:.8f}".format(
-                    data_loss, lagrangian_data_loss, constraint_norm, lagrangian))
+            logging.info("Data loss = {:.8f}, Lagrangian data loss = {:.8f}, "
+                         "constraint norm = {:.8f}, Lagrangian = {:.8f}".format(data_loss, lagrangian_data_loss,
+                                                                                constraint_norm, lagrangian))
 
         return data_loss, lagrangian
 
@@ -70,7 +70,7 @@ class Optimizer(BaseOptimizer):
         data_loss = self.net.criterion(y, labels)
 
         # TODO: This compares the losses.
-        #data_loss = 0.5 * torch.pow((y - labels), 2).sum()
+        # data_loss = 0.5 * torch.pow((y - labels), 2).sum()
         # print(data_loss, data_loss_tmp)
 
         lagrangian_data_loss = self.net.criterion(self.v, labels)
@@ -116,12 +116,31 @@ def primal1_ls(y, lam, y_train, rho, loss):
 
 
 def primal1_nll(y, lam, y_train, rho, loss):
-    z = torch.zeros(y.size(), dtype=global_config.cfg.datatype, device=global_config.cfg.device)
+    """
+    Return the solution of the prox operator of the nll loss.
 
-    r = y + lam / rho
+    :param y: f(u^k+1)
+    :param lam: lambda^k
+    :param y_train: Ground truth labels.
+    :param rho: Prox factor.
+    :param loss: pytorch nll loss function.
+    :return New primal1 variable (z^k+1).
+    """
+
+    # Primal1 problem:
+    #   z^k+1 = argmin_z L(z;y) + (rho/2) * norm(z - R)^2 = prox_L(R)
+    # with R = f(u^k+1) + (1/rho) * lambda^k, L(z) = -log(softmax(z)) and y the ground truth label.
+
+    z_new = torch.zeros(y.size(), dtype=global_config.cfg.datatype, device=global_config.cfg.device)
+
+    R = y + lam / rho
 
     for i in range(y_train.size(0)):
-        cls = y_train[i]
-        z[i] = torch.from_numpy(prox_cross_entropy(np.expand_dims(r[i].detach().numpy(), 1), 1 / rho, cls.item()))
+        with torch.no_grad():
+            y_train_i = y_train[i].item()
+            Ri = R[i].cpu().numpy()
 
-    return z
+            z_new_i = prox_cross_entropy(Ri, 1 / rho, y_train_i)
+            z_new[i] = torch.tensor(z_new_i, dtype=global_config.cfg.datatype, device=global_config.cfg.device)
+
+    return z_new
