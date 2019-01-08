@@ -6,19 +6,19 @@ classdef helper
             if strcmp(p, 'GD')
                 % 1 = fixed stepsize, 2 = Armijo, 3 = Powell-Wolfe.
 
-                %params.linesearch = 1;
-                %params.stepsize = 0.001;
+                params.linesearch = 1;
+                params.stepsize = 5e-2;
 
-                params.linesearch = 2;
-                params.beta = 0.5;
-                params.gamma = 10^-4;
+                %params.linesearch = 2;
+                %params.beta = 0.5;
+                %params.gamma = 10^-4;
 
                 %params.linesearch = 3;
                 %params.gamma = 10^-4;
                 %params.eta = 0.7;
                 %params.beta = 4;
                 
-                params.iterations = 4000;
+                params.iterations = 2000;
             elseif strcmp(p, 'LLC')
                 % 1 = fixed stepsize, 2 = Armijo.
 
@@ -33,7 +33,7 @@ classdef helper
                 params.M = 0.001;
                 params.factor = 10;
                 
-                params.iterations = 50;
+                params.iterations = 100;
             elseif strcmp(p, 'ProxDescent')
                 % Regularizer weight multiplier.
                 params.tau = 1.5;
@@ -42,19 +42,19 @@ classdef helper
                 % Initial regularizer weight.
                 params.mu_min = 0.3;
                 
-                params.iterations = 80;
+                params.iterations = 18;
             elseif strcmp(p, 'LM')
                 % LM Damping factor.
                 params.M = 0.001;
                 params.factor = 10;
                 
-                params.iterations = 50;
+                params.iterations = 100;
             elseif strcmp(p, 'ProxProp')
                 %params.tau = 1;
                 params.tau = 0.005;
                 params.tau_theta = 10;
                 
-                params.iterations = 500;
+                params.iterations = 100;
             else
                 error('Unknown algorithm parameter.');
             end

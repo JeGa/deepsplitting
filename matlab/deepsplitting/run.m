@@ -8,7 +8,7 @@ addpath(genpath('baseline'));
 % Classification: spirals, Regression: reg_sinus.
 [X_train, y_train, X_test, y_test, dim, classes] = helper.get_data(1, 'spirals', false, 1);
 
-subset = -5;
+subset = -1;
 
 if subset > 0
     % If only a subset is required.
@@ -22,7 +22,7 @@ end
 %%
 
 activation_type = 2; % 1 = sigmoid, 2 = relu.
-loss_type = 1; % 1 = LS, 2 = NLLsm.
+loss_type = 2; % 1 = LS, 2 = NLLsm.
 
 global DEBUG
 DEBUG = false;
@@ -36,20 +36,20 @@ N = size(y_train, 2);
 loss = get_loss(loss_type, N);
 
 networks = {
-    GDNetwork(layers, h, dh, loss, X_train), 'GD';
+    %GDNetwork(layers, h, dh, loss, X_train), 'GD';
     LLCNetwork(layers, h, dh, loss, X_train), 'LLC'; % TODO: Add regularizer (see class def file).
-    ProxDescentNetwork(layers, h, dh, loss, X_train), 'ProxDescent'; % TODO: No matlab solver (see class def file).
-    ProxPropNetwork(layers, h, dh, loss, X_train), 'ProxProp'; % TODO: Armijo (see class def file).
+    %ProxDescentNetwork(layers, h, dh, loss, X_train), 'ProxDescent'; % TODO: No matlab solver (see class def file).
+    %ProxPropNetwork(layers, h, dh, loss, X_train), 'ProxProp'; % TODO: Armijo (see class def file).
 };
 
-if loss_type == 1
-   networks(end+1,:) = {LMNetwork(layers, h, dh, loss, X_train), 'LM'};
-end
+%if loss_type == 1
+   %networks(end+1,:) = {LMNetwork(layers, h, dh, loss, X_train), 'LM'};
+%end
 
-train(networks{2,1}, X_train, y_train, networks{2,2}, loss_type, activation_type);
+train(networks{1,1}, X_train, y_train, networks{1,2}, loss_type, activation_type);
 %train_all(networks, X_train, y_train, loss_type, activation_type);
 
-%results = load_results(networks);
+results = load_results(networks);
 
 %plot_grid(network);
 

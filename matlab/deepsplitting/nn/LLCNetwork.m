@@ -24,7 +24,7 @@ classdef LLCNetwork < Network
                 obj.v = 0.1 * randn(c, N);
             end
             
-            obj.rho = 35;
+            obj.rho = 5;
         end
         
         function [obj, losses] = train(obj, X_train, y_train, params)
