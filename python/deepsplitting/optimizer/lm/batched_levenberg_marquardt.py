@@ -34,7 +34,14 @@ class Optimizer(BaseOptimizer):
         loss = []
         correctly_classified = []
 
+        def test_interval():
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
+                                               global_config.cfg.classes)
+            if correct is not None:
+                correctly_classified.append(correct)
+
         loss.append(self.loss_chunked(inputs, labels))
+        test_interval()
 
         for i, index in enumerate(self.batches(indices, batch_size), 1):
             subindex = self.rand_subindex(batch_size, subsample_size)
@@ -47,16 +54,13 @@ class Optimizer(BaseOptimizer):
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
                 type(self).__module__, i, max_steps, current_loss))
 
-            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
-                                               global_config.cfg.classes)
-            if correct is not None:
-                correctly_classified.append(correct)
-
             self.iteration += 1
+
+            test_interval()
 
             gp.bar.next_batch(dict(dataloss=current_loss))
 
-        return loss, correctly_classified
+        return loss[:-1], correctly_classified[:-1]
 
     def step_batched(self, inputs, labels, index, subindex):
         raise NotImplementedError()
@@ -212,10 +216,7 @@ class Optimizer_vanstep(Optimizer):
 
         new_params, step = self.cg_solve(x, A, B, return_step=True)
 
-        # Required for armijo.
-        dderiv = B.t().matmul(step)
-
-        return new_params, step, B, dderiv
+        return new_params, step, B
 
     def step_batched(self, inputs, labels, index, subindex):
         delta = self.hyperparams.delta
@@ -223,7 +224,7 @@ class Optimizer_vanstep(Optimizer):
 
         loss_current = self.loss_chunked(inputs, labels)
 
-        new_params, step, B, dderiv = self.cg_step(inputs, labels, index, subindex, delta)
+        new_params, step, B = self.cg_step(inputs, labels, index, subindex, delta)
 
         self.load(new_params)
         loss_new = self.loss_chunked(inputs, labels)

@@ -6,6 +6,7 @@ import ipywidgets
 import IPython
 import enum
 import math
+import pathlib
 from matplotlib import pyplot as plt
 
 import deepsplitting.utils.global_config as global_config
@@ -280,14 +281,7 @@ class Notebook:
         self.results_select.observe(f, names='value')
 
     def get_file_list(self):
-        file_list = []
-
-        with os.scandir(self.data_folder) as it:
-            for entry in it:
-                if entry.is_file():
-                    file_list.append(entry.name)
-
-        return file_list
+        return [p.name for p in pathlib.Path(self.data_folder).glob('*.yml')]
 
     def run(self):
         file_list = self.get_file_list()

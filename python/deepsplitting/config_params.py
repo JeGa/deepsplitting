@@ -115,6 +115,63 @@ optimizer_params_ls_paramsearch_bGD = [
         Hyperparams(lr=5e-5, vanstep=False)),
 ]
 
+# For report. =================================================================
+
+# Spirals dataset and nll.
+report_optimizer_params_nll = [
+    ParamsEntry(
+        True, 'spirals_bGD_nll', GD.Optimizer_batched,
+        Hyperparams(lr=1e-3, vanstep=False)),
+
+    ParamsEntry(
+        False, 'spirals_sbLM_damping_nll', sbLM.Optimizer_damping,
+        Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=10, M=0.001, factor=10, primal2_batches=1)),
+    ParamsEntry(
+        False, 'spirals_sbLM_armijo_nll', sbLM.Optimizer_armijo,
+        Hyperparams(rho=1, rho_add=0, subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4,
+                    primal2_batches=1)),
+
+    ParamsEntry(
+        False, 'spirals_sbGD_nll_rho1', sbGD.Optimizer,
+        Hyperparams(rho=1, rho_add=0, stepsize=5e-4, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        False, 'spirals_sbGD_nll_rho5', sbGD.Optimizer,
+        Hyperparams(rho=5, rho_add=0, stepsize=5e-4, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        False, 'spirals_sbGD_nll_rho10', sbGD.Optimizer,
+        Hyperparams(rho=10, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        False, 'spirals_sbGD_nll_rho50', sbGD.Optimizer,
+        Hyperparams(rho=50, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        True, 'spirals_sbGD_nll_rho100', sbGD.Optimizer,
+        Hyperparams(rho=100, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1))
+]
+
+# MNIST and LS loss.
+report_optimizer_params_ls = [
+    ParamsEntry(
+        True, 'mnist_bGD_fix', GD.Optimizer_batched,
+        Hyperparams(lr=1e-3, vanstep=False)),
+
+    ParamsEntry(
+        True, 'mnist_sbGD_nll_rho5', sbGD.Optimizer,
+        Hyperparams(rho=5, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        True, 'mnist__sbGD_nll_rho10', sbGD.Optimizer,
+        Hyperparams(rho=10, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1)),
+    ParamsEntry(
+        True, 'mnist__sbGD_nll_rho50', sbGD.Optimizer,
+        Hyperparams(rho=50, rho_add=0, stepsize=1e-3, vanstep=False, primal2_batches=1)),
+
+    ParamsEntry(
+        False, 'mnist_bLM_vanstep', bLM.Optimizer_vanstep,
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, stepsize=1e-3, stepsize_fix=True)),
+    ParamsEntry(
+        False, 'mnist_bLM_armijo', bLM.Optimizer_armijo,
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=1e-3)),
+]
+
 # All optimizer ===============================================================
 
 optimizer_params_ls = [
@@ -132,7 +189,7 @@ optimizer_params_ls = [
 
     # Splitting with batched GD step.
     ParamsEntry(
-        True, 'sbGD_fix', sbGD.Optimizer,
+        False, 'sbGD_fix', sbGD.Optimizer,
         Hyperparams(rho=1, rho_add=0, stepsize=1e-3, vanstep=False)),
     ParamsEntry(
         False, 'sbGD_vanstep', sbGD.Optimizer,
@@ -143,8 +200,8 @@ optimizer_params_ls = [
         False, 'bLM_damping', bLM.Optimizer_damping,
         Hyperparams(subsample_factor=1, cg_iter=8, M=0.001, factor=5)),
     ParamsEntry(
-        False, 'bLM_armijo', bLM.Optimizer_armijo,
-        Hyperparams(subsample_factor=0.5, cg_iter=20, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
+        True, '5_bLM_armijo', bLM.Optimizer_armijo,
+        Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, beta=0.5, gamma=10e-4)),
     ParamsEntry(
         False, 'bLM_vanstep', bLM.Optimizer_vanstep,
         Hyperparams(subsample_factor=1, cg_iter=10, delta=1, eta=0.5, stepsize=1e-4, stepsize_fix=True)),

@@ -6,14 +6,14 @@ import deepsplitting.utils.global_config as global_config
 server_cfg = global_config.GlobalParams(
     loss_type='ls',  # 'ls' or 'nll'.
     activation_type='relu',  # 'relu' or 'sigmoid'.
-    device=torch.device('cuda:3'),
-    classes=10,
+    device=torch.device('cuda:0'),
 
     epochs=1,
-    training_batch_size=10,
+    training_batch_size=5,  # -1 for full batch.
     training_samples=-1,  # Take subset of training set.
     forward_chunk_size_factor=0.1,  # For calculating full batch loss.
     test_interval=-1,  # -1 to disable.
+    final_test=False,  # Compute correctly classified samples at the end of the training.
 
     datatype=torch.double,
 
@@ -25,7 +25,8 @@ server_cfg = global_config.GlobalParams(
 
     batch_seed=-1,
     # - Permutating the samples each epoch for batching.
-    # This can be used for debugging. Set -1 to disable.
+    # If a seed is set this seed is set at each epoch, so at each epoch the batches are sampled the same. This can be
+    # used for debugging. Set -1 to disable.
 
     logging=-1,  # To enable: logging.INFO, to disable set to -1.
     results_folder='results',
@@ -33,16 +34,16 @@ server_cfg = global_config.GlobalParams(
 )
 
 local_cfg = global_config.GlobalParams(
-    loss_type='ls',
+    loss_type='nll',
     activation_type='relu',
     device=torch.device('cpu'),
-    classes=28 * 28,  # TODO: 10 for MNIST.
 
-    epochs=50,
-    training_batch_size=50,
-    training_samples=100,
+    epochs=2,
+    training_batch_size=10,
+    training_samples=-1,
     forward_chunk_size_factor=1,
     test_interval=-1,
+    final_test=False,
 
     datatype=torch.double,
 

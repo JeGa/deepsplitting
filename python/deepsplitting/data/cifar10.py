@@ -2,7 +2,6 @@ import torch
 import torchvision
 
 from deepsplitting.data.misc import get_sampler
-from .misc import To64fTensor
 
 
 def load_CIFAR10(training_samples=-1, test_samples=-1,
@@ -36,7 +35,7 @@ def load_CIFAR10(training_samples=-1, test_samples=-1,
 
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    return trainloader, testloader, classes, training_batch_size, test_batch_size
+    return trainloader, testloader, training_batch_size, test_batch_size, classes
 
 
 def load_CIFAR10_batched(training_batch_size, test_batch_size,
@@ -61,4 +60,4 @@ def load_CIFAR10_batched(training_batch_size, test_batch_size,
 
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    return trainloader, testloader, classes, training_batch_size, test_batch_size
+    return trainloader, testloader, training_batch_size, test_batch_size, classes

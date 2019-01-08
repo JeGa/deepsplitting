@@ -49,7 +49,14 @@ class Optimizer_batched(BaseOptimizer):
         loss = []
         correctly_classified = []
 
+        def test_interval():
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
+                                               global_config.cfg.classes)
+            if correct is not None:
+                correctly_classified.append(correct)
+
         loss.append(self.loss_chunked(inputs, labels))
+        test_interval()
 
         for i, index in enumerate(self.batches(indices, batch_size), 1):
             self.gd_step(inputs[index], labels[index])
@@ -59,18 +66,15 @@ class Optimizer_batched(BaseOptimizer):
             logging.info("{} (Batch step [{}/{}]): Data loss = {:.6f}".format(
                 type(self).__module__, i, max_steps, current_loss))
 
-            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels,
-                                               global_config.cfg.classes)
-            if correct is not None:
-                correctly_classified.append(correct)
-
             loss.append(current_loss)
 
             self.iteration += 1
 
+            test_interval()
+
             gp.bar.next_batch(dict(dataloss=current_loss))
 
-        return loss, correctly_classified
+        return loss[:-1], correctly_classified[:-1]
 
     def gd_step(self, inputs, labels):
         loss = self.net.loss(inputs, labels)

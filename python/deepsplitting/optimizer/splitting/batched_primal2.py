@@ -39,10 +39,18 @@ class Optimizer_batched(Optimizer):
         lagrangian_batchstep = []
         correctly_classified = []
 
+        def test_interval():
+            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels, global_config.cfg.classes)
+
+            if correct is not None:
+                correctly_classified.append(correct)
+
         data_loss_startepoch, lagrangian_startepoch = self.eval(inputs, labels)
 
         data_loss_batchstep.append(data_loss_startepoch)
         lagrangian_batchstep.append(lagrangian_startepoch)
+
+        test_interval()
 
         lagrangian_old = lagrangian_startepoch
 
@@ -72,15 +80,13 @@ class Optimizer_batched(Optimizer):
 
             lagrangian_old = lagrangian_new
 
-            correct = testrun.test_at_interval(self.net, self.iteration - 1, inputs, labels, global_config.cfg.classes)
-            if correct is not None:
-                correctly_classified.append(correct)
-
             self.iteration += 1
+
+            test_interval()
 
             gp.bar.next_batch(dict(dataloss=data_loss_new, lagrangian=lagrangian_new))
 
-        return data_loss_batchstep, lagrangian_batchstep, correctly_classified
+        return data_loss_batchstep[:-1], lagrangian_batchstep[:-1], correctly_classified[:-1]
 
     def primal2(self, inputs, labels, index, subindex):
         raise NotImplementedError()
